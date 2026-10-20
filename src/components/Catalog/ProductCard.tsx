@@ -1,0 +1,372 @@
+'use client';
+
+import React, { useState } from 'react';
+import Image from 'next/image';
+import { Heart, Eye, ShoppingBag, Star } from 'lucide-react';
+import { Product } from '../../types/product';
+import { useShop } from '../../context/ShopContext';
+
+interface ProductCardProps {
+  product: Product;
+}
+
+export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const { addToCart, toggleWishlist, isWishlisted, setQuickViewProduct } = useShop();
+  const [selectedSize, setSelectedSize] = useState<string>(product.sizes[0] || '41');
+  const [selectedColor, setSelectedColor] = useState<string>(product.colors[0]?.name || 'Standard');
+  const [isHovered, setIsHovered] = useState(false);
+
+  const wishlisted = isWishlisted(product.id);
+  const primaryImg = product.images[0];
+  const secondaryImg = product.images[1] || primaryImg;
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Only open quick view if didn't click size pill or button
+    const target = e.target as HTMLElement;
+    if (!target.closest('button')) {
+      setQuickViewProduct(product);
+    }
+  };
+
+  return (
+    <div
+      onClick={handleCardClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        backgroundColor: '#FFFFFF',
+        borderRadius: '16px',
+        border: '1px solid #E2E8F0',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: isHovered ? '0 16px 32px -4px rgba(0, 0, 0, 0.1)' : '0 2px 6px rgba(0, 0, 0, 0.04)',
+        transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
+        cursor: 'pointer',
+      }}
+    >
+      {/* Badges Container */}
+      {product.discountPercentage && product.discountPercentage > 0 && (
+        <span className="badge-discount" suppressHydrationWarning>
+          -{product.discountPercentage}% OFF
+        </span>
+      )}
+
+      {product.isNewArrival && (
+        <span className="badge-tag" suppressHydrationWarning>
+          NEW
+        </span>
+      )}
+      {!product.isNewArrival && product.isBestseller && (
+        <span className="badge-tag" style={{ backgroundColor: '#D97706' }} suppressHydrationWarning>
+          BESTSELLER
+        </span>
+      )}
+
+      {/* Wishlist Button (Top Right) */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleWishlist(product.id);
+        }}
+        aria-label="Add to Wishlist"
+        style={{
+          position: 'absolute',
+          top: '12px',
+          right: product.isNewArrival || product.isBestseller ? '64px' : '12px',
+          zIndex: 3,
+          backgroundColor: '#FFFFFF',
+          borderRadius: '50%',
+          width: '36px',
+          height: '36px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '1px solid #E2E8F0',
+          cursor: 'pointer',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+          transition: 'transform 0.15s ease, background 0.15s ease',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.15)')}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+      >
+        <Heart
+          size={18}
+          color={wishlisted ? '#D32F2F' : '#64748B'}
+          fill={wishlisted ? '#D32F2F' : 'none'}
+        />
+      </button>
+
+      {/* Shoe Image Area with Dual Angle Hover */}
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        aspectRatio: '1/1',
+        backgroundColor: '#F8FAFC',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <Image
+          src={isHovered ? secondaryImg : primaryImg}
+          alt={product.name}
+          width={400}
+          height={400}
+          unoptimized
+          style={{
+            width: '90%',
+            height: '90%',
+            objectFit: 'contain',
+            transition: 'transform 0.4s ease, opacity 0.3s ease',
+            transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+          }}
+        />
+
+        {/* Hover Quick Actions Overlay */}
+        <div style={{
+          position: 'absolute',
+          bottom: '12px',
+          left: '12px',
+          right: '12px',
+          display: 'flex',
+          gap: '8px',
+          opacity: isHovered ? 1 : 0,
+          transform: isHovered ? 'translateY(0)' : 'translateY(10px)',
+          transition: 'all 0.25s ease',
+          zIndex: 4,
+        }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setQuickViewProduct(product);
+            }}
+            className="btn btn-secondary btn-sm"
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(4px)',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+            }}
+          >
+            <Eye size={14} color="#0F172A" />
+            <span>Quick View</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Product Information Body */}
+      <div style={{
+        padding: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+      }}>
+        {/* Brand & Category */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '6px',
+        }}>
+          <span style={{
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#D32F2F',
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+          }}>
+            {product.brand}
+          </span>
+          <span style={{
+            fontSize: '0.72rem',
+            color: '#64748B',
+            fontWeight: 500,
+          }}>
+            {product.gender}
+          </span>
+        </div>
+
+        {/* Product Title */}
+        <h3 style={{
+          fontSize: '0.95rem',
+          fontWeight: 700,
+          color: '#0F172A',
+          lineHeight: 1.35,
+          marginBottom: '8px',
+          minHeight: '2.7em',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}>
+          {product.name}
+        </h3>
+
+        {/* Rating Stars */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '5px',
+          marginBottom: '10px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Star
+                key={star}
+                size={13}
+                color="#F59E0B"
+                fill={star <= Math.round(product.rating) ? '#F59E0B' : 'none'}
+              />
+            ))}
+          </div>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B' }}>
+            {product.rating}
+          </span>
+          <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
+            ({product.reviewCount})
+          </span>
+        </div>
+
+        {/* Size Selection Chips */}
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '4px',
+          }}>
+            <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>
+              SIZE (EU):
+            </span>
+            <span style={{ fontSize: '0.7rem', color: '#0F172A', fontWeight: 800 }}>
+              {selectedSize}
+            </span>
+          </div>
+          <div style={{
+            display: 'flex',
+            gap: '6px',
+            flexWrap: 'wrap',
+          }}>
+            {product.sizes.slice(0, 5).map((sz) => (
+              <button
+                key={sz}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedSize(sz);
+                }}
+                style={{
+                  width: '28px',
+                  height: '26px',
+                  borderRadius: '4px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  border: sz === selectedSize ? '1.5px solid #D32F2F' : '1px solid #E2E8F0',
+                  backgroundColor: sz === selectedSize ? '#FFEBEE' : '#FFFFFF',
+                  color: sz === selectedSize ? '#D32F2F' : '#334155',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {sz}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Color Swatch Dots */}
+        {product.colors.length > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>COLOR:</span>
+            <div style={{ display: 'flex', gap: '5px' }}>
+              {product.colors.map((c) => (
+                <button
+                  key={c.name}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedColor(c.name);
+                  }}
+                  title={c.name}
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    backgroundColor: c.hex,
+                    border: c.name === selectedColor ? '2px solid #D32F2F' : '1px solid #CBD5E1',
+                    padding: 0,
+                    cursor: 'pointer',
+                    boxShadow: c.name === selectedColor ? '0 0 0 1px #D32F2F' : 'none',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Price & Savings */}
+        <div style={{
+          marginTop: 'auto',
+          paddingTop: '10px',
+          borderTop: '1px solid #F1F5F9',
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          marginBottom: '14px',
+        }}>
+          <div>
+            <div style={{
+              fontSize: '1.2rem',
+              fontWeight: 900,
+              color: '#0F172A',
+            }} suppressHydrationWarning>
+              Tk {product.price.toLocaleString()}
+            </div>
+            {product.regularPrice > product.price && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{
+                  fontSize: '0.8rem',
+                  color: '#94A3B8',
+                  textDecoration: 'line-through',
+                }} suppressHydrationWarning>
+                  Tk {product.regularPrice.toLocaleString()}
+                </span>
+                <span style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  color: '#15803D',
+                }} suppressHydrationWarning>
+                  Save Tk {(product.regularPrice - product.price).toLocaleString()}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Add To Cart CTA Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            addToCart(product, selectedSize, selectedColor, 1);
+          }}
+          className="btn btn-primary"
+          style={{
+            width: '100%',
+            padding: '10px 14px',
+            fontSize: '0.875rem',
+            borderRadius: '8px',
+          }}
+        >
+          <ShoppingBag size={16} />
+          <span>Add to Bag</span>
+        </button>
+      </div>
+    </div>
+  );
+};

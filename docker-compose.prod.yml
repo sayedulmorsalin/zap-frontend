@@ -1,0 +1,137 @@
+services:
+  # ─────────────────────────────────────────────────────────────
+  # 1. PostgreSQL Database Container
+  # ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: zap_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-shoeshop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zap_secure_db_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-shoeshop_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - zap-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shoeshop} -d ${POSTGRES_DB:-shoeshop_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ─────────────────────────────────────────────────────────────
+  # 2. Shoe Shop REST API (Nest/Next.js + Prisma)
+  # ─────────────────────────────────────────────────────────────
+  zap-api:
+    build:
+      context: ${API_DIR:-../nest js/zap api/shoe-shop-api}
+      dockerfile: Dockerfile
+    container_name: zap_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-shoeshop}:${POSTGRES_PASSWORD:-zap_secure_db_pass_2026}@postgres:5432/${POSTGRES_DB:-shoeshop_db}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-zap_access_secret_production_key_change_me_987}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-zap_refresh_secret_production_key_change_me_654}
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: 1
+      PORT: 3001
+      SEED_DATABASE: ${SEED_DATABASE:-true}
+    networks:
+      - zap-internal
+      - zap-external
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────
+  # 3. Zap Next.js Storefront & Admin Panel
+  # ─────────────────────────────────────────────────────────────
+  zap-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BACKEND_API_URL: http://zap-api:3001
+    container_name: zap_web
+    restart: unless-stopped
+    depends_on:
+      zap-api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      BACKEND_API_URL: http://zap-api:3001
+      NEXT_PUBLIC_SITE_URL: ${SITE_URL:-http://localhost}
+    networks:
+      - zap-internal
+      - zap-external
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 25s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ─────────────────────────────────────────────────────────────
+  # 4. Production Nginx Reverse Proxy (Ports 80 & 443)
+  # ─────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: zap_nginx
+    restart: unless-stopped
+    depends_on:
+      zap-web:
+        condition: service_healthy
+      zap-api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot_etc:/etc/letsencrypt:ro
+      - certbot_var:/var/www/certbot:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - zap-external
+
+  # ─────────────────────────────────────────────────────────────
+  # 5. Automated Certbot (Free Let's Encrypt SSL Certificates)
+  # ─────────────────────────────────────────────────────────────
+  certbot:
+    image: certbot/certbot:latest
+    container_name: zap_certbot
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - zap-external
+
+networks:
+  # Internal network: PostgreSQL is NOT accessible from public internet
+  zap-internal:
+    driver: bridge
+    internal: true
+  # External network: Nginx, Web, and API communicate here
+  zap-external:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  certbot_etc:
+    driver: local
+  certbot_var:
+    driver: local
+  nginx_logs:
+    driver: local
