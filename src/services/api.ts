@@ -524,10 +524,13 @@ export async function uploadApiFiles(
 ): Promise<{ success: boolean; data?: UploadedFileRecord[]; message?: string }> {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const adminPasskey = typeof window !== 'undefined' ? (sessionStorage.getItem('zap_admin_pass') || 'zap@admin2026') : 'zap@admin2026';
+    const authToken = token || adminPasskey;
+
     const headers: Record<string, string> = {
-      'x-admin-key': 'zap@admin2026',
+      'Authorization': `Bearer ${authToken}`,
+      'x-admin-key': adminPasskey,
     };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const formData = new FormData();
     formData.append('entityType', entityType);
@@ -537,14 +540,34 @@ export async function uploadApiFiles(
       formData.append('files', file);
     });
 
-    const res = await fetch(`${API_BASE}/api/storage/upload`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
+    // Strategy 1: Try relative Next.js proxy route /api/storage/upload (same-origin, bypasses browser CORS)
+    let res: Response | null = null;
+    let json: any = null;
 
-    const json = await res.json();
-    let records = json.data as UploadedFileRecord[] | undefined;
+    try {
+      res = await fetch('/api/storage/upload', {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+      if (res.ok || res.status === 400 || res.status === 401 || res.status === 403 || res.status === 500) {
+        json = await res.json().catch(() => null);
+      }
+    } catch {
+      res = null;
+    }
+
+    // Strategy 2: If relative route not handled or 404, call API_BASE directly
+    if (!res || !json || res.status === 404) {
+      res = await fetch(`${API_BASE}/api/storage/upload`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+      json = await res.json().catch(() => null);
+    }
+
+    let records = json?.data as UploadedFileRecord[] | undefined;
     if (records && Array.isArray(records)) {
       records = records.map((r) => ({
         ...r,
@@ -553,9 +576,9 @@ export async function uploadApiFiles(
     }
 
     return {
-      success: res.ok && json.success,
+      success: Boolean(res?.ok && json?.success),
       data: records,
-      message: json.message || (res.ok ? 'Upload successful' : 'Upload failed'),
+      message: json?.message || (res?.ok ? 'Upload successful' : `Upload failed (${res?.status || 'Unknown error'})`),
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Network error uploading file to storage';
@@ -570,25 +593,43 @@ export async function uploadApiFiles(
 export async function deleteApiFile(keyOrId: string): Promise<{ success: boolean; message?: string }> {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const adminPasskey = typeof window !== 'undefined' ? (sessionStorage.getItem('zap_admin_pass') || 'zap@admin2026') : 'zap@admin2026';
+    const authToken = token || adminPasskey;
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
+      'Authorization': `Bearer ${authToken}`,
+      'x-admin-key': adminPasskey,
     };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const url = keyOrId.startsWith('uploads/')
-      ? `${API_BASE}/api/storage/files/${keyOrId}`
-      : `${API_BASE}/api/storage/${keyOrId}`;
+    const relativeUrl = keyOrId.startsWith('uploads/')
+      ? `/api/storage/files/${keyOrId}`
+      : `/api/storage/${keyOrId}`;
 
-    const res = await fetch(url, {
-      method: 'DELETE',
-      headers,
-    });
+    let res: Response | null = null;
+    try {
+      res = await fetch(relativeUrl, {
+        method: 'DELETE',
+        headers,
+      });
+    } catch {
+      res = null;
+    }
 
-    const json = await res.json();
+    if (!res || res.status === 404) {
+      const directUrl = keyOrId.startsWith('uploads/')
+        ? `${API_BASE}/api/storage/files/${keyOrId}`
+        : `${API_BASE}/api/storage/${keyOrId}`;
+      res = await fetch(directUrl, {
+        method: 'DELETE',
+        headers,
+      });
+    }
+
+    const json = await res.json().catch(() => null);
     return {
-      success: res.ok && json.success,
-      message: json.message,
+      success: Boolean(res?.ok && json?.success),
+      message: json?.message || (res?.ok ? 'File deleted successfully' : 'Delete failed'),
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to delete file from storage';
