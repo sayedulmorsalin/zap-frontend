@@ -8,10 +8,18 @@ import {
   Edit3, 
   Trash2, 
   Star, 
-  X 
+  X,
+  UploadCloud,
+  Image as ImageIcon,
+  ArrowUp,
+  ArrowDown,
+  Loader2,
+  Link2,
+  AlertCircle
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { Product, Gender, ShoeCategory } from '../../types/product';
+import { uploadApiFiles } from '../../services/api';
 
 export const ProductManager: React.FC = () => {
   const { products, addProduct, updateProduct, deleteProduct, brands } = useShop();
@@ -25,6 +33,12 @@ export const ProductManager: React.FC = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+
+  // SeaweedFS Upload State
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [manualUrlInput, setManualUrlInput] = useState('');
+  const [showManualUrl, setShowManualUrl] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -40,7 +54,7 @@ export const ProductManager: React.FC = () => {
     inStock: true,
     isFeatured: false,
     isNewArrival: true,
-    imageUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80',
+    images: ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'] as string[],
     sizesStr: '39, 40, 41, 42, 43, 44',
     colorsStr: 'Black, Dark Brown',
   });
@@ -72,10 +86,13 @@ export const ProductManager: React.FC = () => {
       inStock: true,
       isFeatured: false,
       isNewArrival: true,
-      imageUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80',
+      images: ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'],
       sizesStr: '39, 40, 41, 42, 43, 44',
       colorsStr: 'Black, Dark Brown',
     });
+    setUploadError(null);
+    setManualUrlInput('');
+    setShowManualUrl(false);
     setIsAddOpen(true);
   };
 
@@ -94,10 +111,93 @@ export const ProductManager: React.FC = () => {
       inStock: product.inStock,
       isFeatured: !!product.isFeatured,
       isNewArrival: !!product.isNewArrival,
-      imageUrl: product.images[0] || '',
+      images: product.images && product.images.length > 0 ? [...product.images] : ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'],
       sizesStr: product.sizes.join(', '),
       colorsStr: product.colors.map(c => c.name).join(', '),
     });
+    setUploadError(null);
+    setManualUrlInput('');
+    setShowManualUrl(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    const filesArray = Array.from(fileList);
+    try {
+      const res = await uploadApiFiles(filesArray, 'PRODUCT');
+      if (res.success && res.data && res.data.length > 0) {
+        const newUrls = res.data.map((item) => item.url);
+        setFormData((prev) => {
+          // If previous images only had the generic default placeholder, replace it with newly uploaded images
+          const isOnlyPlaceholder =
+            prev.images.length === 1 &&
+            prev.images[0].includes('unsplash.com/photo-1549298916');
+          return {
+            ...prev,
+            images: isOnlyPlaceholder ? newUrls : [...prev.images, ...newUrls],
+          };
+        });
+      } else {
+        setUploadError(res.message || 'Upload to SeaweedFS failed.');
+      }
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : 'Network error during file upload');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSetPrimary = (index: number) => {
+    if (index === 0) return;
+    setFormData((prev) => {
+      const updated = [...prev.images];
+      const [selected] = updated.splice(index, 1);
+      updated.unshift(selected);
+      return { ...prev, images: updated };
+    });
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setFormData((prev) => {
+      const updated = prev.images.filter((_, idx) => idx !== index);
+      return {
+        ...prev,
+        images: updated.length > 0 ? updated : ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'],
+      };
+    });
+  };
+
+  const handleMoveImage = (index: number, direction: 'up' | 'down') => {
+    setFormData((prev) => {
+      const updated = [...prev.images];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= updated.length) return prev;
+      const temp = updated[index];
+      updated[index] = updated[targetIndex];
+      updated[targetIndex] = temp;
+      return { ...prev, images: updated };
+    });
+  };
+
+  const handleAddManualUrl = () => {
+    const trimmed = manualUrlInput.trim();
+    if (!trimmed) return;
+    setFormData((prev) => {
+      const isOnlyPlaceholder =
+        prev.images.length === 1 &&
+        prev.images[0].includes('unsplash.com/photo-1549298916');
+      return {
+        ...prev,
+        images: isOnlyPlaceholder ? [trimmed] : [...prev.images, trimmed],
+      };
+    });
+    setManualUrlInput('');
   };
 
   const handleSaveProduct = (e: React.FormEvent) => {
@@ -112,6 +212,11 @@ export const ProductManager: React.FC = () => {
     const discountPercentage = Math.round(
       ((formData.regularPrice - formData.price) / formData.regularPrice) * 100
     );
+
+    const validImages = formData.images.filter(Boolean);
+    const finalImages = validImages.length > 0
+      ? validImages
+      : ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'];
 
     if (editingProduct) {
       const updated: Product = {
@@ -129,7 +234,7 @@ export const ProductManager: React.FC = () => {
         inStock: formData.inStock,
         isFeatured: formData.isFeatured,
         isNewArrival: formData.isNewArrival,
-        images: [formData.imageUrl, ...editingProduct.images.slice(1)],
+        images: finalImages,
         sizes: sizes.length ? sizes : ['40', '41', '42'],
         colors: colors.length ? colors : [{ name: 'Standard', hex: '#000000' }],
       };
@@ -159,7 +264,7 @@ export const ProductManager: React.FC = () => {
           'Comfort ergonomic footbed',
           'High abrasion non-slip outsole',
         ],
-        images: [formData.imageUrl],
+        images: finalImages,
         sizes: sizes.length ? sizes : ['39', '40', '41', '42', '43'],
         colors: colors.length ? colors : [{ name: 'Classic Black', hex: '#09090B' }],
         inStock: formData.inStock,
@@ -534,19 +639,311 @@ export const ProductManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* Image URL */}
+              {/* Product Images (SeaweedFS S3 Upload & Gallery) */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
-                  Image URL *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="admin-input"
-                  placeholder="https://images.unsplash.com/..."
-                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ImageIcon size={16} color="#D32F2F" />
+                    <span>Product Images ({formData.images.length})</span>
+                    <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 500 }}>• First image is primary</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowManualUrl(!showManualUrl)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#475569',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Link2 size={13} />
+                    <span>{showManualUrl ? 'Hide URL Input' : 'Add External URL'}</span>
+                  </button>
+                </div>
+
+                {/* SeaweedFS Drag-and-Drop / Upload Zone */}
+                <div
+                  style={{
+                    border: '2px dashed #CBD5E1',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    textAlign: 'center',
+                    backgroundColor: '#F8FAFC',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.style.borderColor = '#D32F2F';
+                    e.currentTarget.style.backgroundColor = '#FEF2F2';
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.style.borderColor = '#CBD5E1';
+                    e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.style.borderColor = '#CBD5E1';
+                    e.currentTarget.style.backgroundColor = '#F8FAFC';
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      const pseudoEvent = {
+                        target: { files: e.dataTransfer.files, value: '' },
+                      } as unknown as React.ChangeEvent<HTMLInputElement>;
+                      handleFileUpload(pseudoEvent);
+                    }
+                  }}
+                >
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                    onChange={handleFileUpload}
+                    disabled={isUploading}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      opacity: 0,
+                      cursor: isUploading ? 'not-allowed' : 'pointer',
+                    }}
+                  />
+                  {isUploading ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#D32F2F' }}>
+                      <Loader2 size={28} style={{ animation: 'spin 1s linear infinite' }} />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>
+                        Uploading to SeaweedFS Storage...
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                        Verifying magic bytes and registering metadata
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                      <div style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '50%',
+                        backgroundColor: '#FEE2E2',
+                        color: '#D32F2F',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '4px',
+                      }}>
+                        <UploadCloud size={22} />
+                      </div>
+                      <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#1E293B' }}>
+                        Click to browse or drag & drop shoe photos
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                        PNG, JPG, WebP, GIF, or SVG • Stored on self-hosted SeaweedFS S3
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload Error Banner */}
+                {uploadError && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    color: '#DC2626',
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}>
+                    <AlertCircle size={14} />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
+
+                {/* Optional Manual URL Input */}
+                {showManualUrl && (
+                  <div style={{
+                    marginTop: '10px',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    backgroundColor: '#F1F5F9',
+                    display: 'flex',
+                    gap: '8px',
+                    alignItems: 'center',
+                  }}>
+                    <input
+                      type="url"
+                      placeholder="https://images.unsplash.com/... or /images/..."
+                      value={manualUrlInput}
+                      onChange={(e) => setManualUrlInput(e.target.value)}
+                      className="admin-input"
+                      style={{ flex: 1, backgroundColor: '#FFFFFF' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddManualUrl}
+                      disabled={!manualUrlInput.trim()}
+                      className="btn btn-secondary btn-sm"
+                      style={{ whiteSpace: 'nowrap' }}
+                    >
+                      Add URL
+                    </button>
+                  </div>
+                )}
+
+                {/* Image Thumbnails Gallery */}
+                {formData.images.length > 0 && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(105px, 1fr))',
+                    gap: '10px',
+                    marginTop: '12px',
+                  }}>
+                    {formData.images.map((imgUrl, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          position: 'relative',
+                          border: idx === 0 ? '2px solid #D32F2F' : '1px solid #E2E8F0',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          backgroundColor: '#FFFFFF',
+                          aspectRatio: '1',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                        }}
+                      >
+                        <Image
+                          src={imgUrl}
+                          alt={`Product preview ${idx + 1}`}
+                          fill
+                          sizes="110px"
+                          style={{ objectFit: 'cover' }}
+                          unoptimized={imgUrl.startsWith('/api/')}
+                        />
+
+                        {/* Primary Badge */}
+                        {idx === 0 ? (
+                          <div style={{
+                            position: 'absolute',
+                            top: '4px',
+                            left: '4px',
+                            backgroundColor: '#D32F2F',
+                            color: '#FFFFFF',
+                            fontSize: '0.62rem',
+                            fontWeight: 800,
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '2px',
+                            zIndex: 2,
+                          }}>
+                            <Star size={10} fill="#FFFFFF" />
+                            <span>PRIMARY</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSetPrimary(idx)}
+                            title="Set as Primary"
+                            style={{
+                              position: 'absolute',
+                              top: '4px',
+                              left: '4px',
+                              backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '2px 5px',
+                              fontSize: '0.62rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              zIndex: 2,
+                            }}
+                          >
+                            Set Primary
+                          </button>
+                        )}
+
+                        {/* Action buttons (Delete & Reorder) */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)',
+                          padding: '6px 4px 4px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          zIndex: 2,
+                        }}>
+                          <div style={{ display: 'flex', gap: '2px' }}>
+                            {idx > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleMoveImage(idx, 'up')}
+                                title="Move Earlier"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#FFFFFF',
+                                  cursor: 'pointer',
+                                  padding: '2px',
+                                }}
+                              >
+                                <ArrowUp size={12} />
+                              </button>
+                            )}
+                            {idx < formData.images.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleMoveImage(idx, 'down')}
+                                title="Move Later"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#FFFFFF',
+                                  cursor: 'pointer',
+                                  padding: '2px',
+                                }}
+                              >
+                                <ArrowDown size={12} />
+                              </button>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(idx)}
+                            title="Remove Photo"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#EF4444',
+                              cursor: 'pointer',
+                              padding: '2px',
+                            }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Sizes & Colors */}

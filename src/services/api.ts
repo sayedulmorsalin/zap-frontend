@@ -490,3 +490,88 @@ export async function deleteApiProduct(id: string): Promise<{ success: boolean; 
     return { success: false, message };
   }
 }
+
+export interface UploadedFileRecord {
+  id: string;
+  key: string;
+  url: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  entityType?: string;
+  createdAt?: string;
+}
+
+/**
+ * Upload one or multiple files to self-hosted SeaweedFS S3 storage through the backend
+ */
+export async function uploadApiFiles(
+  files: File[],
+  entityType = 'PRODUCT',
+  entityId?: string
+): Promise<{ success: boolean; data?: UploadedFileRecord[]; message?: string }> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const headers: Record<string, string> = {
+      'x-admin-key': 'zap@admin2026',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const formData = new FormData();
+    formData.append('entityType', entityType);
+    if (entityId) formData.append('entityId', entityId);
+
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+
+    const res = await fetch(`${API_BASE}/api/storage/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    const json = await res.json();
+    return {
+      success: res.ok && json.success,
+      data: json.data as UploadedFileRecord[] | undefined,
+      message: json.message || (res.ok ? 'Upload successful' : 'Upload failed'),
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Network error uploading file to storage';
+    return { success: false, message };
+  }
+}
+
+/**
+ * Delete a file from SeaweedFS S3 storage and remove its metadata
+ */
+export async function deleteApiFile(keyOrId: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-admin-key': 'zap@admin2026',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const url = keyOrId.startsWith('uploads/')
+      ? `${API_BASE}/api/storage/files/${keyOrId}`
+      : `${API_BASE}/api/storage/${keyOrId}`;
+
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers,
+    });
+
+    const json = await res.json();
+    return {
+      success: res.ok && json.success,
+      message: json.message,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to delete file from storage';
+    return { success: false, message };
+  }
+}
+

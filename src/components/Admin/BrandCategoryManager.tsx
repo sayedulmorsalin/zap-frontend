@@ -1,18 +1,23 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { 
   Plus, 
   Trash2, 
-  X 
+  X,
+  UploadCloud,
+  Loader2
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { BrandInfo } from '../../types/product';
+import { uploadApiFiles } from '../../services/api';
 
 export const BrandCategoryManager: React.FC = () => {
   const { brands, addBrand, deleteBrand, products } = useShop();
 
   const [isAddBrandOpen, setIsAddBrandOpen] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [newBrand, setNewBrand] = useState<BrandInfo>({
     id: '',
     name: '',
@@ -22,7 +27,24 @@ export const BrandCategoryManager: React.FC = () => {
     logoText: '',
     badgeColor: '#D32F2F',
     accentColor: '#9A0007',
+    logoUrl: '',
   });
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingLogo(true);
+    try {
+      const res = await uploadApiFiles([file], 'BRAND');
+      if (res.success && res.data && res.data[0]) {
+        setNewBrand((prev) => ({ ...prev, logoUrl: res.data![0].url }));
+      }
+    } catch (err) {
+      console.error('Logo upload failed:', err);
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
 
   const handleSaveBrand = (e: React.FormEvent) => {
     e.preventDefault();
@@ -279,6 +301,65 @@ export const BrandCategoryManager: React.FC = () => {
                   onChange={(e) => setNewBrand({ ...newBrand, badgeColor: e.target.value })}
                   style={{ width: '100%', height: '38px', borderRadius: '6px', border: '1px solid #CBD5E1', cursor: 'pointer' }}
                 />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '4px' }}>
+                  Brand Logo Image (SeaweedFS S3)
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {newBrand.logoUrl && (
+                    <div style={{
+                      position: 'relative',
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      border: '1px solid #CBD5E1',
+                      flexShrink: 0,
+                    }}>
+                      <Image
+                        src={newBrand.logoUrl}
+                        alt="Logo Preview"
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        unoptimized={newBrand.logoUrl.startsWith('/api/')}
+                      />
+                    </div>
+                  )}
+                  <label style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 12px',
+                    backgroundColor: '#F1F5F9',
+                    borderRadius: '8px',
+                    cursor: isUploadingLogo ? 'not-allowed' : 'pointer',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    color: '#1E293B',
+                    border: '1px solid #CBD5E1',
+                  }}>
+                    {isUploadingLogo ? (
+                      <>
+                        <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                        <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud size={14} color="#D32F2F" />
+                        <span>{newBrand.logoUrl ? 'Change Logo Image' : 'Upload Logo to SeaweedFS'}</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      disabled={isUploadingLogo}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
               </div>
 
               <div>

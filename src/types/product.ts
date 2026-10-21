@@ -62,6 +62,7 @@ export interface BrandInfo {
   logoText: string;
   badgeColor: string;
   accentColor: string;
+  logoUrl?: string;
 }
 
 export interface FilterState {
