@@ -14,13 +14,13 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
-import { BRANDS_DATA } from '../../data/brands';
 
 export const Navbar: React.FC = () => {
   const {
     cartCount,
     cartSubtotal,
     wishlistCount,
+    brands,
     setIsCartOpen,
     setIsWishlistOpen,
     setSelectedBrand,
@@ -227,7 +227,7 @@ export const Navbar: React.FC = () => {
                 zIndex: 1100,
                 animation: 'slideDown 0.2s ease-out',
               }}>
-                {BRANDS_DATA.map((brand) => (
+                {brands.map((brand) => (
                   <button
                     key={brand.id}
                     onClick={() => handleBrandClick(brand.slug)}
@@ -648,7 +648,7 @@ export const Navbar: React.FC = () => {
               OUR BRANDS
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              {BRANDS_DATA.map((b) => (
+              {brands.map((b) => (
                 <button
                   key={b.id}
                   onClick={() => handleBrandClick(b.slug)}

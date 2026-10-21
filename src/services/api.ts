@@ -1,4 +1,5 @@
 import { Product, BrandInfo, ShoeCategory } from '../types/product';
+import { Order, Customer } from '../types/admin';
 
 // In Next.js client, requests to '/api/...' are proxied via next.config.ts rewrites to http://localhost:3001
 const API_BASE = typeof window !== 'undefined' ? '' : 'http://localhost:3001';
@@ -572,6 +573,103 @@ export async function deleteApiFile(keyOrId: string): Promise<{ success: boolean
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to delete file from storage';
     return { success: false, message };
+  }
+}
+
+/**
+ * Fetch all orders from PostgreSQL backend (Admin)
+ */
+export async function fetchApiOrders(): Promise<Order[]> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-admin-key': 'zap@admin2026',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/admin/orders`, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
+
+    if (!res.ok) return [];
+    const json = await res.json();
+    const rawOrders: Array<Record<string, unknown>> = json.data?.data || json.data || [];
+
+    return rawOrders.map((o) => {
+      const user = (o.user as Record<string, unknown>) || {};
+      const addr = (o.address as Record<string, unknown>) || {};
+      return {
+        id: String(o.id || ''),
+        orderNumber: String(o.orderNumber || `ZAP-${String(o.id).slice(-6)}`),
+        customerName: String(user.name || 'Customer'),
+        customerEmail: String(user.email || ''),
+        customerPhone: String(user.phone || ''),
+        shippingAddress: String(addr.street || ''),
+        city: String(addr.city || 'Dhaka'),
+        division: String(addr.state || 'Dhaka'),
+        items: [],
+        subtotal: Number(o.subtotal || o.total || 0),
+        shippingCost: Number(o.shippingCost || 0),
+        discount: Number(o.discount || 0),
+        total: Number(o.total || 0),
+        status: (o.status as Order['status']) || 'PENDING',
+        paymentStatus: (o.paymentStatus as Order['paymentStatus']) || 'UNPAID',
+        paymentMethod: (o.paymentMethod as Order['paymentMethod']) || 'cod',
+        createdAt: String(o.createdAt || new Date().toISOString()),
+        updatedAt: String(o.updatedAt || new Date().toISOString()),
+        notes: o.notes ? String(o.notes) : undefined,
+      };
+    });
+  } catch (err) {
+    console.warn('[API fetchApiOrders Error]:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch registered users/customers from PostgreSQL backend (Admin)
+ */
+export async function fetchApiCustomers(): Promise<Customer[]> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-admin-key': 'zap@admin2026',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/admin/users`, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
+
+    if (!res.ok) return [];
+    const json = await res.json();
+    const rawUsers: Array<Record<string, unknown>> = json.data?.data || json.data || [];
+
+    return rawUsers.map((u) => {
+      const counts = (u._count as Record<string, number>) || {};
+      return {
+        id: String(u.id || ''),
+        name: String(u.name || 'Customer'),
+        email: String(u.email || ''),
+        phone: String(u.phone || ''),
+        city: 'Dhaka',
+        division: 'Dhaka',
+        totalOrders: counts.orders || 0,
+        totalSpent: 0,
+        loyaltyPoints: (counts.orders || 0) * 20,
+        status: u.role === 'ADMIN' ? 'vip' : 'active',
+        joinedDate: String(u.createdAt || new Date().toISOString()).slice(0, 10),
+      };
+    });
+  } catch (err) {
+    console.warn('[API fetchApiCustomers Error]:', err);
+    return [];
   }
 }
 

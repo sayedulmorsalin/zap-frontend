@@ -43,20 +43,20 @@ export const ProductManager: React.FC = () => {
   // Form State
   const [formData, setFormData] = useState({
     name: '',
-    brand: 'ZAP Signature',
+    brand: brands[0]?.name || 'ZAP Signature',
     category: 'formal' as ShoeCategory,
     categoryName: 'Formal Shoes',
     gender: 'MEN' as Gender,
-    price: 3999,
-    regularPrice: 5499,
+    price: 0,
+    regularPrice: 0,
     sku: '',
     description: '',
     inStock: true,
     isFeatured: false,
     isNewArrival: true,
-    images: ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'] as string[],
+    images: [] as string[],
     sizesStr: '39, 40, 41, 42, 43, 44',
-    colorsStr: 'Black, Dark Brown',
+    colorsStr: 'Black',
   });
 
   const filteredProducts = products.filter((p) => {
@@ -75,20 +75,20 @@ export const ProductManager: React.FC = () => {
   const handleOpenAdd = () => {
     setFormData({
       name: '',
-      brand: 'ZAP Signature',
+      brand: brands[0]?.name || 'ZAP Signature',
       category: 'formal',
       categoryName: 'Formal Shoes',
       gender: 'MEN',
-      price: 3999,
-      regularPrice: 5499,
+      price: 0,
+      regularPrice: 0,
       sku: `ZAP-${Math.floor(1000 + Math.random() * 9000)}`,
-      description: 'Handcrafted premium footwear with reinforced stitching and cushioned insole.',
+      description: '',
       inStock: true,
       isFeatured: false,
       isNewArrival: true,
-      images: ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'],
+      images: [],
       sizesStr: '39, 40, 41, 42, 43, 44',
-      colorsStr: 'Black, Dark Brown',
+      colorsStr: 'Black',
     });
     setUploadError(null);
     setManualUrlInput('');

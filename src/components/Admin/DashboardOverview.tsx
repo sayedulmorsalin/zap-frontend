@@ -48,16 +48,39 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ setCurrent
     }
   };
 
-  // Mock weekly revenue bars
-  const weeklySales = [
-    { day: 'Sun', amount: 8400, height: '45%' },
-    { day: 'Mon', amount: 12900, height: '65%' },
-    { day: 'Tue', amount: 15400, height: '78%' },
-    { day: 'Wed', amount: 11200, height: '56%' },
-    { day: 'Thu', amount: 19800, height: '100%' },
-    { day: 'Fri', amount: 17300, height: '88%' },
-    { day: 'Sat', amount: 14600, height: '74%' },
-  ];
+  // Dynamic daily revenue calculated from actual orders
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const now = new Date();
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - (6 - i));
+    const dayName = daysOfWeek[d.getDay()];
+    const dateStr = d.toISOString().slice(0, 10);
+    const dayOrders = orders.filter((o) => o.createdAt && o.createdAt.slice(0, 10) === dateStr);
+    const amount = dayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    return { day: dayName, amount, dateStr };
+  });
+
+  const maxAmount = Math.max(...last7Days.map((d) => d.amount), 1);
+  const weeklySales = last7Days.map((d) => ({
+    day: d.day,
+    amount: d.amount,
+    height: d.amount > 0 ? `${Math.round((d.amount / maxAmount) * 80) + 20}%` : '6%',
+  }));
+  const weeklyTotal = last7Days.reduce((sum, d) => sum + d.amount, 0);
+
+  // Dynamic category distribution from actual catalog
+  const categoryCounts = products.reduce((acc, p) => {
+    const cat = p.categoryName || p.category || 'Other';
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const categoryEntries = Object.entries(categoryCounts).map(([cat, count]) => ({
+    name: cat,
+    count,
+    percent: products.length > 0 ? Math.round((count / products.length) * 100) : 0,
+  }));
 
   return (
     <div>
@@ -224,7 +247,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ setCurrent
               </p>
             </div>
             <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#D32F2F' }}>
-              ৳ 99,600 Weekly
+              ৳ {weeklyTotal.toLocaleString()} Weekly
             </span>
           </div>
 
@@ -269,45 +292,27 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ setCurrent
             </h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, marginBottom: '4px' }}>
-                  <span style={{ color: '#0F172A' }}>Formal & Oxford Derby</span>
-                  <span style={{ color: '#D32F2F' }}>42% (৳ 42,000)</span>
-                </div>
-                <div style={{ height: '7px', backgroundColor: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: '42%', height: '100%', backgroundColor: '#D32F2F' }} />
-                </div>
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, marginBottom: '4px' }}>
-                  <span style={{ color: '#0F172A' }}>Athletic & Runners</span>
-                  <span style={{ color: '#0284C7' }}>28% (৳ 28,000)</span>
-                </div>
-                <div style={{ height: '7px', backgroundColor: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: '28%', height: '100%', backgroundColor: '#0284C7' }} />
-                </div>
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, marginBottom: '4px' }}>
-                  <span style={{ color: '#0F172A' }}>Leather Sandals & Chappal</span>
-                  <span style={{ color: '#D97706' }}>18% (৳ 18,000)</span>
-                </div>
-                <div style={{ height: '7px', backgroundColor: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: '18%', height: '100%', backgroundColor: '#D97706' }} />
-                </div>
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, marginBottom: '4px' }}>
-                  <span style={{ color: '#0F172A' }}>Orthopedic Comfit & Casual</span>
-                  <span style={{ color: '#16A34A' }}>12% (৳ 12,000)</span>
-                </div>
-                <div style={{ height: '7px', backgroundColor: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: '12%', height: '100%', backgroundColor: '#16A34A' }} />
-                </div>
-              </div>
+              {categoryEntries.length > 0 ? (
+                categoryEntries.slice(0, 4).map((entry, idx) => {
+                  const colors = ['#D32F2F', '#0284C7', '#D97706', '#16A34A', '#9333EA'];
+                  const color = colors[idx % colors.length];
+                  return (
+                    <div key={entry.name}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, marginBottom: '4px' }}>
+                        <span style={{ color: '#0F172A' }}>{entry.name}</span>
+                        <span style={{ color }}>{entry.percent}% ({entry.count} {entry.count === 1 ? 'item' : 'items'})</span>
+                      </div>
+                      <div style={{ height: '7px', backgroundColor: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${entry.percent}%`, height: '100%', backgroundColor: color }} />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p style={{ fontSize: '0.85rem', color: '#94A3B8', margin: '10px 0' }}>
+                  No footwear categorized yet. Add products to see distribution.
+                </p>
+              )}
             </div>
           </div>
 

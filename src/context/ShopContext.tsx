@@ -21,6 +21,8 @@ import {
   checkApiHealth, 
   fetchApiProducts, 
   fetchApiBrands, 
+  fetchApiOrders,
+  fetchApiCustomers,
   createApiOrder,
   createApiProduct,
   updateApiProduct,
@@ -131,19 +133,19 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [apiInfo, setApiInfo] = useState<{ database: string; version: string; port: number } | null>(null);
 
   // ── Products ──
-  const [products, setProducts] = useState<Product[]>(PRODUCTS_DATA);
+  const [products, setProducts] = useState<Product[]>([]);
 
   // ── Brands ──
-  const [brands, setBrands] = useState<BrandInfo[]>(BRANDS_DATA);
+  const [brands, setBrands] = useState<BrandInfo[]>([]);
 
   // ── Orders ──
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const [orders, setOrders] = useState<Order[]>([]);
 
   // ── Coupons ──
-  const [coupons, setCoupons] = useState<Coupon[]>(INITIAL_COUPONS);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
 
   // ── Customers ──
-  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   // ── Settings ──
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(INITIAL_SETTINGS);
@@ -181,29 +183,40 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        const savedCart = localStorage.getItem('zap_cart');
-        if (savedCart) setCart(JSON.parse(savedCart));
+        // Purge legacy dummy data from earlier versions
+        const isCleaned = localStorage.getItem('zap_clean_v2');
+        if (!isCleaned) {
+          localStorage.removeItem('zap_products');
+          localStorage.removeItem('zap_brands');
+          localStorage.removeItem('zap_orders');
+          localStorage.removeItem('zap_coupons');
+          localStorage.removeItem('zap_customers');
+          localStorage.setItem('zap_clean_v2', 'true');
+        } else {
+          const savedCart = localStorage.getItem('zap_cart');
+          if (savedCart) setCart(JSON.parse(savedCart));
 
-        const savedWishlist = localStorage.getItem('zap_wishlist');
-        if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
+          const savedWishlist = localStorage.getItem('zap_wishlist');
+          if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
 
-        const savedProducts = localStorage.getItem('zap_products');
-        if (savedProducts) setProducts(JSON.parse(savedProducts));
+          const savedProducts = localStorage.getItem('zap_products');
+          if (savedProducts) setProducts(JSON.parse(savedProducts));
 
-        const savedBrands = localStorage.getItem('zap_brands');
-        if (savedBrands) setBrands(JSON.parse(savedBrands));
+          const savedBrands = localStorage.getItem('zap_brands');
+          if (savedBrands) setBrands(JSON.parse(savedBrands));
 
-        const savedOrders = localStorage.getItem('zap_orders');
-        if (savedOrders) setOrders(JSON.parse(savedOrders));
+          const savedOrders = localStorage.getItem('zap_orders');
+          if (savedOrders) setOrders(JSON.parse(savedOrders));
 
-        const savedCoupons = localStorage.getItem('zap_coupons');
-        if (savedCoupons) setCoupons(JSON.parse(savedCoupons));
+          const savedCoupons = localStorage.getItem('zap_coupons');
+          if (savedCoupons) setCoupons(JSON.parse(savedCoupons));
 
-        const savedCustomers = localStorage.getItem('zap_customers');
-        if (savedCustomers) setCustomers(JSON.parse(savedCustomers));
+          const savedCustomers = localStorage.getItem('zap_customers');
+          if (savedCustomers) setCustomers(JSON.parse(savedCustomers));
 
-        const savedSettings = localStorage.getItem('zap_settings');
-        if (savedSettings) setStoreSettings(JSON.parse(savedSettings));
+          const savedSettings = localStorage.getItem('zap_settings');
+          if (savedSettings) setStoreSettings(JSON.parse(savedSettings));
+        }
       } catch {
         // Safe fallback if local storage parse fails
       } finally {
@@ -283,17 +296,20 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           port: 3001,
         });
 
-        const [apiProdData, apiBrandData] = await Promise.all([
+        const [apiProdData, apiBrandData, apiOrdersData, apiUsersData] = await Promise.all([
           fetchApiProducts(),
           fetchApiBrands(),
+          fetchApiOrders(),
+          fetchApiCustomers(),
         ]);
 
-        if (apiProdData.products.length > 0) {
-          setProducts(apiProdData.products);
+        setProducts(apiProdData.products);
+        setBrands(apiBrandData);
+        if (apiOrdersData.length > 0) {
+          setOrders(apiOrdersData);
         }
-
-        if (apiBrandData.length > 0) {
-          setBrands(apiBrandData);
+        if (apiUsersData.length > 0) {
+          setCustomers(apiUsersData);
         }
       } else {
         setApiStatus('offline');
@@ -317,17 +333,18 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
             port: 3001,
           });
 
-          const [apiProdData, apiBrandData] = await Promise.all([
+          const [apiProdData, apiBrandData, apiOrdersData, apiUsersData] = await Promise.all([
             fetchApiProducts(),
             fetchApiBrands(),
+            fetchApiOrders(),
+            fetchApiCustomers(),
           ]);
 
-          if (active && apiProdData.products.length > 0) {
+          if (active) {
             setProducts(apiProdData.products);
-          }
-
-          if (active && apiBrandData.length > 0) {
             setBrands(apiBrandData);
+            if (apiOrdersData.length > 0) setOrders(apiOrdersData);
+            if (apiUsersData.length > 0) setCustomers(apiUsersData);
           }
         } else {
           setApiStatus('offline');

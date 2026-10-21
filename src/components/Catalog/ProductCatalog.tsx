@@ -9,11 +9,11 @@ import {
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { ProductCard } from './ProductCard';
-import { BRANDS_DATA } from '../../data/brands';
 
 export const ProductCatalog: React.FC = () => {
   const {
     products,
+    brands,
     selectedCategory,
     setSelectedCategory,
     selectedBrand,
@@ -222,7 +222,7 @@ export const ProductCatalog: React.FC = () => {
                   style={selectStyle}
                 >
                   <option value="all">All Brands</option>
-                  {BRANDS_DATA.map((b) => (
+                  {brands.map((b) => (
                     <option key={b.id} value={b.slug}>{b.name}</option>
                   ))}
                 </select>
@@ -409,18 +409,22 @@ export const ProductCatalog: React.FC = () => {
           }}>
             <SlidersHorizontal size={48} color="#CBD5E1" style={{ marginBottom: '16px' }} />
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
-              No Footwear Matches Your Filter
+              {products.length === 0 ? 'No Footwear in Store Yet' : 'No Footwear Matches Your Filter'}
             </h3>
             <p style={{ color: '#64748B', fontSize: '0.9rem', marginBottom: '20px' }}>
-              We couldn&apos;t find any shoe matching your current combination of brand, size, and price filters.
+              {products.length === 0 
+                ? 'Your store catalog is ready! Add your footwear products through the Admin panel or sync from the database.'
+                : "We couldn't find any shoe matching your current combination of brand, size, and price filters."}
             </p>
-            <button
-              onClick={resetFilters}
-              className="btn btn-primary"
-            >
-              <RotateCcw size={16} />
-              <span>Reset All Filters</span>
-            </button>
+            {hasActiveFilters && (
+              <button
+                onClick={resetFilters}
+                className="btn btn-primary"
+              >
+                <RotateCcw size={16} />
+                <span>Reset All Filters</span>
+              </button>
+            )}
           </div>
         )}
       </div>

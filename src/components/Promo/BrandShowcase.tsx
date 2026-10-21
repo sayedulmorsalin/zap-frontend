@@ -2,11 +2,14 @@
 
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
-import { BRANDS_DATA } from '../../data/brands';
 import { useShop } from '../../context/ShopContext';
 
 export const BrandShowcase: React.FC = () => {
-  const { setSelectedBrand, setSelectedCategory } = useShop();
+  const { setSelectedBrand, setSelectedCategory, brands } = useShop();
+
+  if (brands.length === 0) {
+    return null;
+  }
 
   const handleBrandClick = (slug: string) => {
     setSelectedBrand(slug);
@@ -56,7 +59,7 @@ export const BrandShowcase: React.FC = () => {
           gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
           gap: '20px',
         }}>
-          {BRANDS_DATA.map((brand) => (
+          {brands.map((brand) => (
             <div
               key={brand.id}
               onClick={() => handleBrandClick(brand.slug)}
