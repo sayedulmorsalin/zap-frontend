@@ -1,8 +1,8 @@
 import { Product, BrandInfo, ShoeCategory } from '../types/product';
 import { Order, Customer } from '../types/admin';
 
-// In Next.js client, requests to '/api/...' are proxied via next.config.ts rewrites to http://localhost:3001
-const API_BASE = typeof window !== 'undefined' ? '' : 'http://localhost:3001';
+// In Next.js client, requests to '/api/...' are proxied via next.config.ts rewrites
+const API_BASE = typeof window !== 'undefined' ? '' : (process.env.BACKEND_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
 export interface ApiHealthResponse {
   status: string;
