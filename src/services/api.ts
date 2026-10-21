@@ -397,29 +397,37 @@ export async function createApiProduct(product: Product): Promise<{ success: boo
       'x-admin-key': adminPasskey,
     };
 
+    const numPrice = Number(product.price) || 0;
+    const numRegularPrice = Number(product.regularPrice) || numPrice;
+    const finalPrice = numRegularPrice > 0 ? numRegularPrice : (numPrice > 0 ? numPrice : 100);
+    const finalSalePrice = (numPrice > 0 && numPrice < numRegularPrice) ? numPrice : null;
+
     const payload = {
-      name: product.name,
+      name: product.name || 'Unnamed Footwear',
       slug: product.slug,
-      sku: product.sku,
-      description: product.description,
-      price: product.regularPrice || product.price,
-      salePrice: product.regularPrice > product.price ? product.price : null,
-      gender: product.gender,
+      sku: product.sku || `ZAP-${Date.now().toString().slice(-6)}`,
+      description: product.description || '',
+      price: finalPrice,
+      salePrice: finalSalePrice,
+      gender: product.gender || 'UNISEX',
       isFeatured: !!product.isFeatured,
       isActive: product.inStock !== false,
-      categorySlug: product.category,
+      categorySlug: product.category || 'sneakers',
       brandSlug: product.brandSlug || 'zap-signature',
-      images: product.images.map((url, idx) => ({
-        url,
-        isPrimary: idx === 0,
-        order: idx,
-      })),
-      variants: product.sizes.flatMap((size) =>
-        product.colors.map((c) => ({
-          size,
+      images: (product.images || [])
+        .filter((u): u is string => typeof u === 'string' && u.trim().length > 0)
+        .map((url, idx) => ({
+          url,
+          isPrimary: idx === 0,
+          order: idx,
+        })),
+      variants: (product.sizes && product.sizes.length > 0 ? product.sizes : ['40', '41', '42']).flatMap((size) =>
+        (product.colors && product.colors.length > 0 ? product.colors : [{ name: 'Classic Black', hex: '#18181B' }]).map((c) => ({
+          size: String(size),
           color: c.name,
           colorHex: c.hex,
           stock: 20,
+          additionalPrice: 0,
         }))
       ),
     };
