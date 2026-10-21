@@ -7,11 +7,12 @@ const API_BASE = typeof window !== 'undefined' ? '' : 'http://localhost:3001';
 export interface ApiHealthResponse {
   status: string;
   timestamp: string;
-  version: string;
+  version?: string;
   services: {
     database: string;
     api: string;
   };
+  error?: string;
 }
 
 export interface ApiPagination {
@@ -83,8 +84,11 @@ export async function checkApiHealth(): Promise<ApiHealthResponse | null> {
       headers: { 'Content-Type': 'application/json' },
       cache: 'no-store',
     });
-    if (!res.ok) return null;
-    return await res.json();
+    const json = await res.json().catch(() => null);
+    if (json && json.services) {
+      return json as ApiHealthResponse;
+    }
+    return null;
   } catch (err) {
     console.warn('Backend API currently unreachable:', err);
     return null;

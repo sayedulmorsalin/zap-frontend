@@ -31,9 +31,9 @@ import {
 
 interface ShopContextType {
   // Backend API
-  apiStatus: 'connected' | 'offline' | 'checking';
+  apiStatus: 'connected' | 'db_disconnected' | 'offline' | 'checking';
   isApiConnected: boolean;
-  apiInfo: { database: string; version: string; port: number } | null;
+  apiInfo: { database: string; version: string; port: number; error?: string } | null;
   refreshFromApi: () => Promise<void>;
 
   // Products & Brands
@@ -129,8 +129,8 @@ const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // ── Backend API Integration State ──
-  const [apiStatus, setApiStatus] = useState<'connected' | 'offline' | 'checking'>('checking');
-  const [apiInfo, setApiInfo] = useState<{ database: string; version: string; port: number } | null>(null);
+  const [apiStatus, setApiStatus] = useState<'connected' | 'db_disconnected' | 'offline' | 'checking'>('checking');
+  const [apiInfo, setApiInfo] = useState<{ database: string; version: string; port: number; error?: string } | null>(null);
 
   // ── Products ──
   const [products, setProducts] = useState<Product[]>([]);
@@ -288,34 +288,40 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshFromApi = useCallback(async () => {
     try {
       const health = await checkApiHealth();
-      if (health && health.status === 'ok') {
-        setApiStatus('connected');
+      if (health && health.services?.api === 'running') {
+        const isDbConnected = health.services?.database === 'connected';
+        setApiStatus(isDbConnected ? 'connected' : 'db_disconnected');
         setApiInfo({
-          database: health.services?.database || 'connected',
+          database: health.services?.database || 'disconnected',
           version: health.version || '0.1.0',
           port: 3001,
+          error: health.error,
         });
 
-        const [apiProdData, apiBrandData, apiOrdersData, apiUsersData] = await Promise.all([
-          fetchApiProducts(),
-          fetchApiBrands(),
-          fetchApiOrders(),
-          fetchApiCustomers(),
-        ]);
+        if (isDbConnected) {
+          const [apiProdData, apiBrandData, apiOrdersData, apiUsersData] = await Promise.all([
+            fetchApiProducts(),
+            fetchApiBrands(),
+            fetchApiOrders(),
+            fetchApiCustomers(),
+          ]);
 
-        setProducts(apiProdData.products);
-        setBrands(apiBrandData);
-        if (apiOrdersData.length > 0) {
-          setOrders(apiOrdersData);
-        }
-        if (apiUsersData.length > 0) {
-          setCustomers(apiUsersData);
+          setProducts(apiProdData.products);
+          setBrands(apiBrandData);
+          if (apiOrdersData.length > 0) {
+            setOrders(apiOrdersData);
+          }
+          if (apiUsersData.length > 0) {
+            setCustomers(apiUsersData);
+          }
         }
       } else {
         setApiStatus('offline');
+        setApiInfo(null);
       }
     } catch {
       setApiStatus('offline');
+      setApiInfo(null);
     }
   }, []);
 
@@ -325,33 +331,41 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkApiHealth()
       .then(async (health) => {
         if (!active) return;
-        if (health && health.status === 'ok') {
-          setApiStatus('connected');
+        if (health && health.services?.api === 'running') {
+          const isDbConnected = health.services?.database === 'connected';
+          setApiStatus(isDbConnected ? 'connected' : 'db_disconnected');
           setApiInfo({
-            database: health.services?.database || 'connected',
+            database: health.services?.database || 'disconnected',
             version: health.version || '0.1.0',
             port: 3001,
+            error: health.error,
           });
 
-          const [apiProdData, apiBrandData, apiOrdersData, apiUsersData] = await Promise.all([
-            fetchApiProducts(),
-            fetchApiBrands(),
-            fetchApiOrders(),
-            fetchApiCustomers(),
-          ]);
+          if (isDbConnected) {
+            const [apiProdData, apiBrandData, apiOrdersData, apiUsersData] = await Promise.all([
+              fetchApiProducts(),
+              fetchApiBrands(),
+              fetchApiOrders(),
+              fetchApiCustomers(),
+            ]);
 
-          if (active) {
-            setProducts(apiProdData.products);
-            setBrands(apiBrandData);
-            if (apiOrdersData.length > 0) setOrders(apiOrdersData);
-            if (apiUsersData.length > 0) setCustomers(apiUsersData);
+            if (active) {
+              setProducts(apiProdData.products);
+              setBrands(apiBrandData);
+              if (apiOrdersData.length > 0) setOrders(apiOrdersData);
+              if (apiUsersData.length > 0) setCustomers(apiUsersData);
+            }
           }
         } else {
           setApiStatus('offline');
+          setApiInfo(null);
         }
       })
       .catch(() => {
-        if (active) setApiStatus('offline');
+        if (active) {
+          setApiStatus('offline');
+          setApiInfo(null);
+        }
       });
 
     return () => {

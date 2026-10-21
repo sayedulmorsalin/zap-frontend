@@ -90,9 +90,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            backgroundColor: apiStatus === 'connected' ? '#EFF6FF' : '#FEF3C7',
-            color: apiStatus === 'connected' ? '#1D4ED8' : '#B45309',
-            border: `1px solid ${apiStatus === 'connected' ? '#BFDBFE' : '#FDE68A'}`,
+            backgroundColor: apiStatus === 'connected' ? '#EFF6FF' : apiStatus === 'db_disconnected' ? '#FEF2F2' : '#FEF3C7',
+            color: apiStatus === 'connected' ? '#1D4ED8' : apiStatus === 'db_disconnected' ? '#DC2626' : '#B45309',
+            border: `1px solid ${apiStatus === 'connected' ? '#BFDBFE' : apiStatus === 'db_disconnected' ? '#FECACA' : '#FDE68A'}`,
             fontSize: '0.74rem',
             fontWeight: 700,
             padding: '5px 10px',
@@ -106,7 +106,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            backgroundColor: apiStatus === 'connected' ? '#2563EB' : '#D97706',
+            backgroundColor: apiStatus === 'connected' ? '#2563EB' : apiStatus === 'db_disconnected' ? '#DC2626' : '#D97706',
             display: 'inline-block',
             boxShadow: apiStatus === 'connected' ? '0 0 0 2px rgba(37, 99, 235, 0.25)' : 'none',
             animation: apiStatus === 'connected' ? 'pulse 2s infinite' : 'none',
@@ -115,7 +115,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             {isRefreshing 
               ? 'SYNCING...' 
               : apiStatus === 'connected' 
-              ? 'API: POSTGRESQL CONNECTED' 
+              ? 'POSTGRESQL CONNECTED' 
+              : apiStatus === 'db_disconnected'
+              ? 'DATABASE DISCONNECTED'
               : apiStatus === 'checking' 
               ? 'CONNECTING API...' 
               : 'API: OFFLINE'}

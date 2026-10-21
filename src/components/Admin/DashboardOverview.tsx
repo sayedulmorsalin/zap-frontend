@@ -103,8 +103,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ setCurrent
             width: '42px',
             height: '42px',
             borderRadius: '12px',
-            backgroundColor: apiStatus === 'connected' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(234, 179, 8, 0.15)',
-            color: apiStatus === 'connected' ? '#4ADE80' : '#FACC15',
+            backgroundColor: apiStatus === 'connected' ? 'rgba(34, 197, 94, 0.15)' : apiStatus === 'db_disconnected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+            color: apiStatus === 'connected' ? '#4ADE80' : apiStatus === 'db_disconnected' ? '#F87171' : '#FACC15',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -121,15 +121,31 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ setCurrent
                 fontWeight: 800,
                 padding: '2px 8px',
                 borderRadius: '12px',
-                backgroundColor: apiStatus === 'connected' ? '#166534' : '#854D0E',
-                color: apiStatus === 'connected' ? '#BBF7D0' : '#FEF08A',
+                backgroundColor: apiStatus === 'connected' ? '#166534' : apiStatus === 'db_disconnected' ? '#991B1B' : '#854D0E',
+                color: apiStatus === 'connected' ? '#BBF7D0' : apiStatus === 'db_disconnected' ? '#FECACA' : '#FEF08A',
               }}>
-                {apiStatus === 'connected' ? 'LIVE & SYNCHRONIZED' : apiStatus === 'checking' ? 'CONNECTING...' : 'LOCAL CACHE'}
+                {apiStatus === 'connected' 
+                  ? 'LIVE & SYNCHRONIZED' 
+                  : apiStatus === 'db_disconnected'
+                  ? 'DATABASE DISCONNECTED'
+                  : apiStatus === 'checking' 
+                  ? 'CONNECTING...' 
+                  : 'API UNREACHABLE'}
               </span>
             </div>
-            <p style={{ margin: '3px 0 0', fontSize: '0.78rem', color: '#94A3B8' }}>
-              Database: <code style={{ color: '#E2E8F0' }}>shoeshop_db</code> ({apiInfo?.database || 'PostgreSQL 18'}) &bull; API Port: 3001 &bull; Endpoints: /api/products, /api/brands, /api/orders
-            </p>
+            {apiInfo?.error ? (
+              <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#FCA5A5' }}>
+                Prisma Error: {apiInfo.error}
+              </p>
+            ) : apiStatus === 'offline' ? (
+              <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#FDE047' }}>
+                Cannot reach Backend API. Ensure BACKEND_API_URL points to your Dokploy API URL.
+              </p>
+            ) : (
+              <p style={{ margin: '3px 0 0', fontSize: '0.78rem', color: '#94A3B8' }}>
+                Database: <code style={{ color: '#E2E8F0' }}>{apiInfo?.database || 'shoeshop_db'}</code> &bull; API Port: 3001 &bull; Endpoints: /api/products, /api/brands, /api/orders
+              </p>
+            )}
           </div>
         </div>
 
