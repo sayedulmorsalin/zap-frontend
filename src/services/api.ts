@@ -1,8 +1,13 @@
 import { Product, BrandInfo, ShoeCategory } from '../types/product';
 import { Order, Customer } from '../types/admin';
 
-// In Next.js client, requests to '/api/...' are proxied via next.config.ts rewrites
-const API_BASE = typeof window !== 'undefined' ? '' : (process.env.BACKEND_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
+// Dokploy VPS Backend URL (default fallback ensures direct connection from both client and server)
+const DOKPLOY_VPS_API_URL = 'https://zap-api-s07dc5-55b9e4-185-209-229-28.sslip.io';
+const API_BASE = (
+  process.env.NEXT_PUBLIC_BACKEND_API_URL ||
+  process.env.BACKEND_API_URL ||
+  DOKPLOY_VPS_API_URL
+).replace(/\/+$/, '');
 
 export interface ApiHealthResponse {
   status: string;
