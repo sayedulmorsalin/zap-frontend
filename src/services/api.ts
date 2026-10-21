@@ -1,5 +1,7 @@
 import { Product, BrandInfo, ShoeCategory } from '../types/product';
 import { Order, Customer } from '../types/admin';
+import { HeroSlide, PromoBanner } from '../types/banner';
+
 
 // Dokploy VPS Backend URL (default fallback ensures direct connection from both client and server)
 const DOKPLOY_VPS_API_URL = 'https://zap-api-s07dc5-55b9e4-185-209-229-28.sslip.io';
@@ -542,9 +544,17 @@ export async function uploadApiFiles(
     });
 
     const json = await res.json();
+    let records = json.data as UploadedFileRecord[] | undefined;
+    if (records && Array.isArray(records)) {
+      records = records.map((r) => ({
+        ...r,
+        url: r.url && r.url.startsWith('/') && !r.url.startsWith('//') ? `${API_BASE}${r.url}` : r.url,
+      }));
+    }
+
     return {
       success: res.ok && json.success,
-      data: json.data as UploadedFileRecord[] | undefined,
+      data: records,
       message: json.message || (res.ok ? 'Upload successful' : 'Upload failed'),
     };
   } catch (err) {
@@ -552,6 +562,7 @@ export async function uploadApiFiles(
     return { success: false, message };
   }
 }
+
 
 /**
  * Delete a file from SeaweedFS S3 storage and remove its metadata
@@ -681,4 +692,109 @@ export async function fetchApiCustomers(): Promise<Customer[]> {
     return [];
   }
 }
+
+export interface ApiBannersResponse {
+  heroSlides: HeroSlide[];
+  promoBanners: PromoBanner[];
+}
+
+/**
+ * Fetch all banners (hero slides & promotional cards) from PostgreSQL backend
+ */
+export async function fetchApiBanners(): Promise<ApiBannersResponse | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/banners`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.success && json.data) {
+      return json.data as ApiBannersResponse;
+    }
+    return null;
+  } catch (err) {
+    console.warn('[API fetchApiBanners Error]:', err);
+    return null;
+  }
+}
+
+/**
+ * Bulk synchronize all banners with PostgreSQL backend (Admin)
+ */
+export async function saveAllApiBanners(
+  heroSlides: HeroSlide[],
+  promoBanners: PromoBanner[]
+): Promise<boolean> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-admin-key': 'zap@admin2026',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/banners`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ heroSlides, promoBanners }),
+    });
+
+    return res.ok;
+  } catch (err) {
+    console.warn('[API saveAllApiBanners Error]:', err);
+    return false;
+  }
+}
+
+/**
+ * Save single banner (Hero or Promo) to PostgreSQL backend (Admin)
+ */
+export async function createOrUpdateApiBanner(banner: Partial<HeroSlide & PromoBanner>): Promise<boolean> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-admin-key': 'zap@admin2026',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/banners`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(banner),
+    });
+
+    return res.ok;
+  } catch (err) {
+    console.warn('[API createOrUpdateApiBanner Error]:', err);
+    return false;
+  }
+}
+
+/**
+ * Delete a banner by id from PostgreSQL backend (Admin)
+ */
+export async function deleteApiBanner(bannerId: string): Promise<boolean> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-admin-key': 'zap@admin2026',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/banners/${bannerId}`, {
+      method: 'DELETE',
+      headers,
+    });
+
+    return res.ok;
+  } catch (err) {
+    console.warn('[API deleteApiBanner Error]:', err);
+    return false;
+  }
+}
+
 

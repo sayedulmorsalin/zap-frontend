@@ -4,23 +4,16 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
-
-interface SlideItem {
-  id: number;
-  tag: string;
-  headline: string;
-  subheadline: string;
-  description: string;
-  image: string;
-  ctaText: string;
-  ctaAction: () => void;
-  secondaryCtaText: string;
-  secondaryCtaAction: () => void;
-  accentColor: string;
-}
+import { BannerTargetType } from '../../types/banner';
 
 export const HeroSlider: React.FC = () => {
-  const { setSelectedGender, setSelectedBrand, setSelectedCategory } = useShop();
+  const { 
+    heroSlides, 
+    setSelectedGender, 
+    setSelectedBrand, 
+    setSelectedCategory 
+  } = useShop();
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -31,85 +24,49 @@ export const HeroSlider: React.FC = () => {
     }
   };
 
-  const slides: SlideItem[] = [
-    {
-      id: 1,
-      tag: 'ZAP ATELIER &bull; SS 2026',
-      headline: 'MASTER YOUR STRIDE',
-      subheadline: 'ARCHITECTURAL FOOTWEAR & LEATHER CRAFT',
-      description: 'The pinnacle of contemporary footwear design. Handcrafted genuine leather oxfords, effortless everyday luxury walkers, and high-performance sneakers engineered for modern living.',
-      image: '/images/hero-banner.jpg',
-      ctaText: 'SHOP MEN’S STYLES',
-      ctaAction: () => {
-        setSelectedGender('MEN');
-        setSelectedBrand('all');
-        setSelectedCategory('all');
-        scrollToCatalog();
-      },
-      secondaryCtaText: 'LADIES’ COLLECTION',
-      secondaryCtaAction: () => {
-        setSelectedGender('WOMEN');
-        setSelectedBrand('all');
-        setSelectedCategory('all');
-        scrollToCatalog();
-      },
-      accentColor: '#D32F2F',
-    },
-    {
-      id: 2,
-      tag: 'POWER ATHLETICS',
-      headline: 'VELOCITY RUN NITRO',
-      subheadline: 'UNLEASH YOUR FASTEST PACE',
-      description: 'Engineered with reactive kinetic foam and breathable aerodynamic mesh. Maximum energy return for 5k runs, gym workouts, and active lifestyle.',
-      image: '/images/shoe-power-runner.jpg',
-      ctaText: 'SHOP POWER SNEAKERS',
-      ctaAction: () => {
-        setSelectedBrand('power');
-        setSelectedCategory('all');
-        scrollToCatalog();
-      },
-      secondaryCtaText: 'VIEW RUNNING GEAR',
-      secondaryCtaAction: () => {
-        setSelectedCategory('sneakers');
-        scrollToCatalog();
-      },
-      accentColor: '#E11D48',
-    },
-    {
-      id: 3,
-      tag: 'HUSH PUPPIES LUXURY',
-      headline: 'EXECUTIVE ZERO-G',
-      subheadline: 'ALL-DAY BOARDROOM COMFORT',
-      description: 'Experience pure cloud comfort in hand-burnished genuine cow leather. Orthopedic arch support and shock-dampening heels for effortless all-day wear.',
-      image: '/images/shoe-leather-formal.jpg',
-      ctaText: 'SHOP HUSH PUPPIES',
-      ctaAction: () => {
-        setSelectedBrand('hush-puppies');
-        setSelectedCategory('all');
-        scrollToCatalog();
-      },
-      secondaryCtaText: 'EXPLORE FORMAL SHOES',
-      secondaryCtaAction: () => {
-        setSelectedCategory('formal');
-        scrollToCatalog();
-      },
-      accentColor: '#B45309',
-    },
-  ];
+  const handleAction = (type: BannerTargetType, value: string) => {
+    if (type === 'brand') {
+      setSelectedBrand(value);
+      setSelectedCategory('all');
+    } else if (type === 'category') {
+      setSelectedCategory(value);
+    } else if (type === 'gender') {
+      setSelectedGender(value);
+      setSelectedBrand('all');
+      setSelectedCategory('all');
+    } else {
+      setSelectedBrand('all');
+      setSelectedCategory('all');
+      setSelectedGender('ALL');
+    }
+    scrollToCatalog();
+  };
+
+  // Filter active slides and sort by order
+  const activeSlides = (heroSlides || [])
+    .filter((s) => s.isActive)
+    .sort((a, b) => a.order - b.order);
+
+  const slides = activeSlides.length > 0 ? activeSlides : heroSlides;
 
   // Auto-play timer
   useEffect(() => {
-    if (isHovered) return;
+    if (isHovered || slides.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 6000);
     return () => clearInterval(interval);
   }, [isHovered, slides.length]);
 
+  if (!slides || slides.length === 0) {
+    return null;
+  }
+
+  const safeIndex = currentSlide % slides.length;
+  const slide = slides[safeIndex] || slides[0];
+
   const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
   const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-
-  const slide = slides[currentSlide];
 
   return (
     <section
@@ -129,7 +86,7 @@ export const HeroSlider: React.FC = () => {
         right: 0,
         width: '60%',
         height: '100%',
-        background: 'radial-gradient(circle at 70% 50%, rgba(211, 47, 47, 0.18) 0%, transparent 70%)',
+        background: `radial-gradient(circle at 70% 50%, ${slide.accentColor ? slide.accentColor + '30' : 'rgba(211, 47, 47, 0.18)'} 0%, transparent 70%)`,
         pointerEvents: 'none',
       }} />
 
@@ -166,7 +123,7 @@ export const HeroSlider: React.FC = () => {
               color: '#FCA5A5',
               marginBottom: '16px',
             }}>
-              <ShieldCheck size={14} color="#D32F2F" />
+              <ShieldCheck size={14} color={slide.accentColor || '#D32F2F'} />
               <span>{slide.tag}</span>
             </div>
 
@@ -207,31 +164,37 @@ export const HeroSlider: React.FC = () => {
               gap: '14px',
               flexWrap: 'wrap',
             }}>
-              <button
-                onClick={slide.ctaAction}
-                className="btn btn-primary"
-                style={{
-                  padding: '14px 28px',
-                  fontSize: '0.95rem',
-                }}
-              >
-                <span>{slide.ctaText}</span>
-                <ArrowRight size={17} />
-              </button>
+              {slide.ctaText && (
+                <button
+                  onClick={() => handleAction(slide.ctaTargetType, slide.ctaTargetValue)}
+                  className="btn btn-primary"
+                  style={{
+                    padding: '14px 28px',
+                    fontSize: '0.95rem',
+                    backgroundColor: slide.accentColor || '#D32F2F',
+                    borderColor: slide.accentColor || '#D32F2F',
+                  }}
+                >
+                  <span>{slide.ctaText}</span>
+                  <ArrowRight size={17} />
+                </button>
+              )}
 
-              <button
-                onClick={slide.secondaryCtaAction}
-                className="btn btn-secondary"
-                style={{
-                  padding: '14px 24px',
-                  fontSize: '0.95rem',
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  color: '#FFFFFF',
-                  borderColor: 'rgba(255,255,255,0.2)',
-                }}
-              >
-                <span>{slide.secondaryCtaText}</span>
-              </button>
+              {slide.secondaryCtaText && (
+                <button
+                  onClick={() => handleAction(slide.secondaryCtaTargetType, slide.secondaryCtaTargetValue)}
+                  className="btn btn-secondary"
+                  style={{
+                    padding: '14px 24px',
+                    fontSize: '0.95rem',
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    color: '#FFFFFF',
+                    borderColor: 'rgba(255,255,255,0.2)',
+                  }}
+                >
+                  <span>{slide.secondaryCtaText}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -253,7 +216,7 @@ export const HeroSlider: React.FC = () => {
               border: '2px solid rgba(255, 255, 255, 0.1)',
             }}>
               <Image
-                src={slide.image}
+                src={slide.image || '/images/hero-banner.jpg'}
                 alt={slide.headline}
                 width={960}
                 height={600}
@@ -282,98 +245,108 @@ export const HeroSlider: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
               }}>
-                <span style={{ fontSize: '0.68rem', color: '#94A3B8', fontWeight: 600 }}>CRAFTED EXCELLENCE</span>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#F87171' }}>100% Certified ZAP Quality</span>
+                <span style={{ fontSize: '0.68rem', color: '#94A3B8', fontWeight: 600 }}>
+                  {slide.badgeText || 'CRAFTED EXCELLENCE'}
+                </span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#F87171' }}>
+                  {slide.badgeSubtext || '100% Certified ZAP Quality'}
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Prev / Next Slider Navigation Buttons */}
-      <button
-        onClick={prevSlide}
-        aria-label="Previous Slide"
-        style={{
-          position: 'absolute',
-          left: '16px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          backgroundColor: 'rgba(255, 255, 255, 0.15)',
-          color: '#FFFFFF',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          backdropFilter: 'blur(6px)',
-          borderRadius: '50%',
-          width: '44px',
-          height: '44px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 10,
-          transition: 'all 0.2s ease',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#D32F2F')}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)')}
-      >
-        <ChevronLeft size={22} />
-      </button>
+      {/* Prev / Next Slider Navigation Buttons (show when > 1 slide) */}
+      {slides.length > 1 && (
+        <>
+          <button
+            onClick={prevSlide}
+            aria-label="Previous Slide"
+            style={{
+              position: 'absolute',
+              left: '16px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              backgroundColor: 'rgba(255, 255, 255, 0.15)',
+              color: '#FFFFFF',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              backdropFilter: 'blur(6px)',
+              borderRadius: '50%',
+              width: '44px',
+              height: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 10,
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = slide.accentColor || '#D32F2F')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)')}
+          >
+            <ChevronLeft size={22} />
+          </button>
 
-      <button
-        onClick={nextSlide}
-        aria-label="Next Slide"
-        style={{
-          position: 'absolute',
-          right: '16px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          backgroundColor: 'rgba(255, 255, 255, 0.15)',
-          color: '#FFFFFF',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          backdropFilter: 'blur(6px)',
-          borderRadius: '50%',
-          width: '44px',
-          height: '44px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 10,
-          transition: 'all 0.2s ease',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#D32F2F')}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)')}
-      >
-        <ChevronRight size={22} />
-      </button>
+          <button
+            onClick={nextSlide}
+            aria-label="Next Slide"
+            style={{
+              position: 'absolute',
+              right: '16px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              backgroundColor: 'rgba(255, 255, 255, 0.15)',
+              color: '#FFFFFF',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              backdropFilter: 'blur(6px)',
+              borderRadius: '50%',
+              width: '44px',
+              height: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 10,
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = slide.accentColor || '#D32F2F')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)')}
+          >
+            <ChevronRight size={22} />
+          </button>
+        </>
+      )}
 
       {/* Slide Indicator Dots */}
-      <div style={{
-        position: 'absolute',
-        bottom: '18px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        display: 'flex',
-        gap: '8px',
-        zIndex: 10,
-      }}>
-        {slides.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentSlide(idx)}
-            aria-label={`Go to slide ${idx + 1}`}
-            style={{
-              width: idx === currentSlide ? '28px' : '10px',
-              height: '8px',
-              borderRadius: '999px',
-              backgroundColor: idx === currentSlide ? '#D32F2F' : 'rgba(255, 255, 255, 0.3)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-            }}
-          />
-        ))}
-      </div>
+      {slides.length > 1 && (
+        <div style={{
+          position: 'absolute',
+          bottom: '18px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          gap: '8px',
+          zIndex: 10,
+        }}>
+          {slides.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentSlide(idx)}
+              aria-label={`Go to slide ${idx + 1}`}
+              style={{
+                width: idx === safeIndex ? '28px' : '10px',
+                height: '8px',
+                borderRadius: '999px',
+                backgroundColor: idx === safeIndex ? (slide.accentColor || '#D32F2F') : 'rgba(255, 255, 255, 0.3)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <style jsx>{`
         @media (min-width: 900px) {

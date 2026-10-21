@@ -17,6 +17,9 @@ import {
   INITIAL_CUSTOMERS, 
   INITIAL_ORDERS 
 } from '../data/adminDemo';
+import { HeroSlide, PromoBanner } from '../types/banner';
+import { INITIAL_HERO_SLIDES, INITIAL_PROMO_BANNERS } from '../data/banners';
+
 import { 
   checkApiHealth, 
   fetchApiProducts, 
@@ -26,8 +29,12 @@ import {
   createApiOrder,
   createApiProduct,
   updateApiProduct,
-  deleteApiProduct
+  deleteApiProduct,
+  fetchApiBanners,
+  saveAllApiBanners,
+  deleteApiBanner
 } from '../services/api';
+
 
 interface ShopContextType {
   // Backend API
@@ -68,6 +75,19 @@ interface ShopContextType {
   storeSettings: StoreSettings;
   updateStoreSettings: (settings: Partial<StoreSettings>) => void;
   resetToDefaults: () => void;
+
+  // Banners & Promos
+  heroSlides: HeroSlide[];
+  promoBanners: PromoBanner[];
+  addHeroSlide: (slide: HeroSlide) => void;
+  updateHeroSlide: (slide: HeroSlide) => void;
+  deleteHeroSlide: (slideId: string) => void;
+  reorderHeroSlides: (slides: HeroSlide[]) => void;
+  addPromoBanner: (banner: PromoBanner) => void;
+  updatePromoBanner: (banner: PromoBanner) => void;
+  deletePromoBanner: (bannerId: string) => void;
+  resetBannersToDefaults: () => void;
+
 
   // Cart & Wishlist
   cart: CartItem[];
@@ -150,6 +170,11 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Settings ──
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(INITIAL_SETTINGS);
 
+  // ── Banners & Promos ──
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(INITIAL_HERO_SLIDES);
+  const [promoBanners, setPromoBanners] = useState<PromoBanner[]>(INITIAL_PROMO_BANNERS);
+
+
   // ── Cart & Wishlist ──
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
@@ -216,6 +241,13 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           const savedSettings = localStorage.getItem('zap_settings');
           if (savedSettings) setStoreSettings(JSON.parse(savedSettings));
+
+          const savedSlides = localStorage.getItem('zap_hero_slides');
+          if (savedSlides) setHeroSlides(JSON.parse(savedSlides));
+
+          const savedBanners = localStorage.getItem('zap_promo_banners');
+          if (savedBanners) setPromoBanners(JSON.parse(savedBanners));
+
         }
       } catch {
         // Safe fallback if local storage parse fails
@@ -284,6 +316,21 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {}
   }, [storeSettings]);
 
+  useEffect(() => {
+    if (!isHydratedRef.current) return;
+    try {
+      localStorage.setItem('zap_hero_slides', JSON.stringify(heroSlides));
+    } catch {}
+  }, [heroSlides]);
+
+  useEffect(() => {
+    if (!isHydratedRef.current) return;
+    try {
+      localStorage.setItem('zap_promo_banners', JSON.stringify(promoBanners));
+    } catch {}
+  }, [promoBanners]);
+
+
   // Synchronize with PostgreSQL Backend API on User Request
   const refreshFromApi = useCallback(async () => {
     try {
@@ -299,11 +346,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         if (isDbConnected) {
-          const [apiProdData, apiBrandData, apiOrdersData, apiUsersData] = await Promise.all([
+          const [apiProdData, apiBrandData, apiOrdersData, apiUsersData, apiBanners] = await Promise.all([
             fetchApiProducts(),
             fetchApiBrands(),
             fetchApiOrders(),
             fetchApiCustomers(),
+            fetchApiBanners(),
           ]);
 
           setProducts(apiProdData.products);
@@ -314,6 +362,11 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (apiUsersData.length > 0) {
             setCustomers(apiUsersData);
           }
+          if (apiBanners) {
+            if (apiBanners.heroSlides?.length > 0) setHeroSlides(apiBanners.heroSlides);
+            if (apiBanners.promoBanners?.length > 0) setPromoBanners(apiBanners.promoBanners);
+          }
+
         }
       } else {
         setApiStatus('offline');
@@ -342,11 +395,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
 
           if (isDbConnected) {
-            const [apiProdData, apiBrandData, apiOrdersData, apiUsersData] = await Promise.all([
+            const [apiProdData, apiBrandData, apiOrdersData, apiUsersData, apiBanners] = await Promise.all([
               fetchApiProducts(),
               fetchApiBrands(),
               fetchApiOrders(),
               fetchApiCustomers(),
+              fetchApiBanners(),
             ]);
 
             if (active) {
@@ -354,8 +408,13 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setBrands(apiBrandData);
               if (apiOrdersData.length > 0) setOrders(apiOrdersData);
               if (apiUsersData.length > 0) setCustomers(apiUsersData);
+              if (apiBanners) {
+                if (apiBanners.heroSlides?.length > 0) setHeroSlides(apiBanners.heroSlides);
+                if (apiBanners.promoBanners?.length > 0) setPromoBanners(apiBanners.promoBanners);
+              }
             }
           }
+
         } else {
           setApiStatus('offline');
           setApiInfo(null);
@@ -518,6 +577,67 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast('Store settings saved successfully!');
   };
 
+  // ── Banners & Promos ──
+  const addHeroSlide = (slide: HeroSlide) => {
+    const updated = [...heroSlides, slide];
+    setHeroSlides(updated);
+    saveAllApiBanners(updated, promoBanners);
+    showToast('Hero slide added and synced to database.');
+  };
+
+  const updateHeroSlide = (slide: HeroSlide) => {
+    const updated = heroSlides.map((s) => (s.id === slide.id ? slide : s));
+    setHeroSlides(updated);
+    saveAllApiBanners(updated, promoBanners);
+    showToast('Hero slide updated and synced to database.');
+  };
+
+  const deleteHeroSlide = (slideId: string) => {
+    const updated = heroSlides.filter((s) => s.id !== slideId);
+    setHeroSlides(updated);
+    deleteApiBanner(slideId);
+    showToast('Hero slide removed from database.');
+  };
+
+  const reorderHeroSlides = (newSlides: HeroSlide[]) => {
+    setHeroSlides(newSlides);
+    saveAllApiBanners(newSlides, promoBanners);
+    showToast('Hero slides reordered and synced.');
+  };
+
+  const addPromoBanner = (banner: PromoBanner) => {
+    const updated = [...promoBanners, banner];
+    setPromoBanners(updated);
+    saveAllApiBanners(heroSlides, updated);
+    showToast('Promotional banner added and synced to database.');
+  };
+
+  const updatePromoBanner = (banner: PromoBanner) => {
+    const updated = promoBanners.map((b) => (b.id === banner.id ? banner : b));
+    setPromoBanners(updated);
+    saveAllApiBanners(heroSlides, updated);
+    showToast('Promotional banner updated and synced to database.');
+  };
+
+  const deletePromoBanner = (bannerId: string) => {
+    const updated = promoBanners.filter((b) => b.id !== bannerId);
+    setPromoBanners(updated);
+    deleteApiBanner(bannerId);
+    showToast('Promotional banner removed from database.');
+  };
+
+  const resetBannersToDefaults = () => {
+    setHeroSlides(INITIAL_HERO_SLIDES);
+    setPromoBanners(INITIAL_PROMO_BANNERS);
+    saveAllApiBanners(INITIAL_HERO_SLIDES, INITIAL_PROMO_BANNERS);
+    try {
+      localStorage.removeItem('zap_hero_slides');
+      localStorage.removeItem('zap_promo_banners');
+    } catch {}
+    showToast('Banners restored to factory design and synced to database.');
+  };
+
+
   const resetToDefaults = () => {
     setProducts(PRODUCTS_DATA);
     setBrands(BRANDS_DATA);
@@ -525,6 +645,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCoupons(INITIAL_COUPONS);
     setCustomers(INITIAL_CUSTOMERS);
     setStoreSettings(INITIAL_SETTINGS);
+    setHeroSlides(INITIAL_HERO_SLIDES);
+    setPromoBanners(INITIAL_PROMO_BANNERS);
     try {
       localStorage.removeItem('zap_products');
       localStorage.removeItem('zap_brands');
@@ -532,9 +654,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('zap_coupons');
       localStorage.removeItem('zap_customers');
       localStorage.removeItem('zap_settings');
+      localStorage.removeItem('zap_hero_slides');
+      localStorage.removeItem('zap_promo_banners');
     } catch {}
     showToast('Demo data reset to factory defaults.');
   };
+
 
   // ── Cart Operations ──
   const addToCart = (product: Product, size?: string, color?: string, quantity: number = 1) => {
@@ -745,6 +870,18 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sortBy,
         setSortBy,
         resetFilters,
+
+        // Banners & Promos
+        heroSlides,
+        promoBanners,
+        addHeroSlide,
+        updateHeroSlide,
+        deleteHeroSlide,
+        reorderHeroSlides,
+        addPromoBanner,
+        updatePromoBanner,
+        deletePromoBanner,
+        resetBannersToDefaults,
 
         // Backend API
         apiStatus,

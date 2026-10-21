@@ -13,7 +13,8 @@ import {
   ExternalLink,
   Shield,
   ChevronRight,
-  LogOut
+  LogOut,
+  Image as ImageIcon
 } from 'lucide-react';
 import { AdminTab } from '../../types/admin';
 import { useShop } from '../../context/ShopContext';
@@ -32,21 +33,25 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   isOpen,
   onLogout,
 }) => {
-  const { orders, products, coupons } = useShop();
+  const { orders, products, coupons, heroSlides, promoBanners } = useShop();
 
   const pendingOrdersCount = orders.filter(
     (o) => o.status === 'PENDING' || o.status === 'CONFIRMED' || o.status === 'PROCESSING'
   ).length;
 
+  const totalBannersCount = (heroSlides?.length || 0) + (promoBanners?.length || 0);
+
   const navItems = [
     { id: 'dashboard' as AdminTab, label: 'Overview', icon: LayoutDashboard },
     { id: 'products' as AdminTab, label: 'Products & Shoes', icon: Package, badge: products.length },
     { id: 'orders' as AdminTab, label: 'Orders & Dispatches', icon: ShoppingBag, badge: pendingOrdersCount, badgeColor: '#D32F2F' },
+    { id: 'banners' as AdminTab, label: 'Banners & Hero', icon: ImageIcon, badge: totalBannersCount },
     { id: 'brands' as AdminTab, label: 'Brands & Lines', icon: Layers },
     { id: 'coupons' as AdminTab, label: 'Coupons & Promos', icon: Tag, badge: coupons.filter(c => c.isActive).length },
     { id: 'customers' as AdminTab, label: 'Shoppers & VIPs', icon: Users },
     { id: 'settings' as AdminTab, label: 'Store Controls', icon: Settings },
   ];
+
 
   return (
     <aside className={`admin-sidebar ${isOpen ? 'open' : ''}`}>

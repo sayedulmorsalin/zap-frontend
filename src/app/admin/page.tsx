@@ -13,6 +13,7 @@ import { OrderManager } from '../../components/Admin/OrderManager';
 import { BrandCategoryManager } from '../../components/Admin/BrandCategoryManager';
 import { CouponManager } from '../../components/Admin/CouponManager';
 import { CustomerManager } from '../../components/Admin/CustomerManager';
+import { BannerManager } from '../../components/Admin/BannerManager';
 import { StoreSettingsManager } from '../../components/Admin/StoreSettingsManager';
 import { useShop } from '../../context/ShopContext';
 
@@ -243,8 +244,11 @@ export default function AdminPage() {
         return <ProductManager />;
       case 'orders':
         return <OrderManager />;
+      case 'banners':
+        return <BannerManager />;
       case 'brands':
         return <BrandCategoryManager />;
+
       case 'coupons':
         return <CouponManager />;
       case 'customers':

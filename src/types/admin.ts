@@ -103,4 +103,6 @@ export type AdminTab =
   | 'brands'
   | 'coupons'
   | 'customers'
+  | 'banners'
   | 'settings';
+

@@ -14,8 +14,10 @@ import {
   Tag,
   ChevronRight,
   Database,
-  Activity
+  Activity,
+  Image as ImageIcon
 } from 'lucide-react';
+
 import { useShop } from '../../context/ShopContext';
 import { AdminTab, OrderStatus } from '../../types/admin';
 
@@ -354,9 +356,18 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ setCurrent
               style={{ flex: 1 }}
             >
               <Tag size={14} />
-              <span>New Promo</span>
+              <span>Promos</span>
+            </button>
+            <button
+              onClick={() => setCurrentTab('banners')}
+              className="btn btn-secondary btn-sm"
+              style={{ flex: 1 }}
+            >
+              <ImageIcon size={14} />
+              <span>Banners</span>
             </button>
           </div>
+
         </div>
       </div>
 
