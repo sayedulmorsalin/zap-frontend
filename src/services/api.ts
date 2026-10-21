@@ -173,24 +173,39 @@ export async function fetchApiProducts(params?: {
   categoryId?: string;
   brandId?: string;
   gender?: string;
+  includeInactive?: boolean;
 }): Promise<{ products: Product[]; pagination: ApiPagination | null }> {
   try {
     const query = new URLSearchParams();
+    query.set('limit', String(params?.limit || 100));
     if (params?.page) query.set('page', String(params.page));
-    if (params?.limit) query.set('limit', String(params.limit));
     if (params?.q) query.set('q', params.q);
     if (params?.categoryId) query.set('categoryId', params.categoryId);
     if (params?.brandId) query.set('brandId', params.brandId);
     if (params?.gender) query.set('gender', params.gender);
+    query.set('includeInactive', 'true'); // Allow admin & catalog to see in-stock & out-of-stock items
 
     const qs = query.toString();
-    const url = `${API_BASE}/api/products${qs ? `?${qs}` : ''}`;
+    const endpoint = `/api/products${qs ? `?${qs}` : ''}`;
 
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-store',
-    });
+    let res: Response | null = null;
+    try {
+      res = await fetch(endpoint, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+      });
+    } catch {
+      res = null;
+    }
+
+    if (!res || res.status === 404) {
+      res = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+      });
+    }
 
     if (!res.ok) {
       throw new Error(`Failed to fetch products: ${res.statusText}`);
@@ -365,58 +380,7 @@ export async function createApiOrder(orderData: {
   }
 }
 
-/**
- * Update an existing product in PostgreSQL database
- */
-export async function updateApiProduct(id: string, updates: Partial<Product>): Promise<{ success: boolean; data?: unknown; message?: string }> {
-  try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
-    };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const payload: Record<string, unknown> = {};
-    if (updates.name !== undefined) payload.name = updates.name;
-    if (updates.description !== undefined) payload.description = updates.description;
-    if (updates.price !== undefined) payload.price = Number(updates.price);
-    if (updates.regularPrice !== undefined && updates.price === undefined) payload.price = Number(updates.regularPrice);
-    if (updates.price !== undefined && updates.regularPrice !== undefined && updates.price < updates.regularPrice) {
-      payload.salePrice = Number(updates.price);
-      payload.price = Number(updates.regularPrice);
-    }
-    if (updates.sku !== undefined) payload.sku = updates.sku;
-    if (updates.gender !== undefined) payload.gender = updates.gender;
-    if (updates.isFeatured !== undefined) payload.isFeatured = updates.isFeatured;
-    if (updates.inStock !== undefined) payload.isActive = updates.inStock;
-    if (updates.category !== undefined) payload.categorySlug = updates.category;
-    if (updates.brandSlug !== undefined) payload.brandSlug = updates.brandSlug;
-    if (updates.images && updates.images.length > 0) {
-      payload.images = updates.images.map((url, idx) => ({
-        url,
-        isPrimary: idx === 0,
-        order: idx,
-      }));
-    }
-
-    const res = await fetch(`${API_BASE}/api/products/${id}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    const json = await res.json();
-    return {
-      success: res.ok && json.success,
-      data: json.data,
-      message: json.message,
-    };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to update product';
-    return { success: false, message };
-  }
-}
 
 /**
  * Create a new product in PostgreSQL database
@@ -424,11 +388,14 @@ export async function updateApiProduct(id: string, updates: Partial<Product>): P
 export async function createApiProduct(product: Product): Promise<{ success: boolean; data?: unknown; message?: string }> {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const adminPasskey = typeof window !== 'undefined' ? (sessionStorage.getItem('zap_admin_pass') || 'zap@admin2026') : 'zap@admin2026';
+    const authToken = token || adminPasskey;
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
+      'Authorization': `Bearer ${authToken}`,
+      'x-admin-key': adminPasskey,
     };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const payload = {
       name: product.name,
@@ -441,7 +408,7 @@ export async function createApiProduct(product: Product): Promise<{ success: boo
       isFeatured: !!product.isFeatured,
       isActive: product.inStock !== false,
       categorySlug: product.category,
-      brandSlug: product.brandSlug || 'zap',
+      brandSlug: product.brandSlug || 'zap-signature',
       images: product.images.map((url, idx) => ({
         url,
         isPrimary: idx === 0,
@@ -457,20 +424,102 @@ export async function createApiProduct(product: Product): Promise<{ success: boo
       ),
     };
 
-    const res = await fetch(`${API_BASE}/api/products`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
+    // Strategy 1: Relative Next.js proxy route first (same-origin, bypasses browser CORS)
+    let res: Response | null = null;
+    try {
+      res = await fetch('/api/products', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      res = null;
+    }
 
-    const json = await res.json();
+    if (!res || res.status === 404) {
+      res = await fetch(`${API_BASE}/api/products`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+    }
+
+    const json = await res.json().catch(() => null);
     return {
-      success: res.ok && json.success,
-      data: json.data,
-      message: json.message,
+      success: Boolean(res?.ok && json?.success),
+      data: json?.data,
+      message: json?.message || (res?.ok ? 'Product created successfully' : `Error (${res?.status})`),
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to create product';
+    return { success: false, message };
+  }
+}
+
+/**
+ * Update an existing product in PostgreSQL database
+ */
+export async function updateApiProduct(id: string, product: Partial<Product>): Promise<{ success: boolean; data?: unknown; message?: string }> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const adminPasskey = typeof window !== 'undefined' ? (sessionStorage.getItem('zap_admin_pass') || 'zap@admin2026') : 'zap@admin2026';
+    const authToken = token || adminPasskey;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+      'x-admin-key': adminPasskey,
+    };
+
+    const payload: Record<string, unknown> = {};
+    if (product.name) payload.name = product.name;
+    if (product.slug) payload.slug = product.slug;
+    if (product.sku) payload.sku = product.sku;
+    if (product.description !== undefined) payload.description = product.description;
+    if (product.price !== undefined) {
+      payload.price = product.regularPrice || product.price;
+      payload.salePrice = (product.regularPrice && product.regularPrice > product.price) ? product.price : null;
+    }
+    if (product.gender) payload.gender = product.gender;
+    if (product.isFeatured !== undefined) payload.isFeatured = product.isFeatured;
+    if (product.inStock !== undefined) payload.isActive = product.inStock;
+    if (product.category) payload.categorySlug = product.category;
+    if (product.brandSlug) payload.brandSlug = product.brandSlug;
+    if (product.images && product.images.length > 0) {
+      payload.images = product.images.map((url, idx) => ({
+        url,
+        isPrimary: idx === 0,
+        order: idx,
+      }));
+    }
+
+    let res: Response | null = null;
+    try {
+      res = await fetch(`/api/products/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      res = null;
+    }
+
+    if (!res || res.status === 404) {
+      res = await fetch(`${API_BASE}/api/products/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(payload),
+      });
+    }
+
+    const json = await res.json().catch(() => null);
+    return {
+      success: Boolean(res?.ok && json?.success),
+      data: json?.data,
+      message: json?.message,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to update product';
     return { success: false, message };
   }
 }
@@ -481,21 +530,36 @@ export async function createApiProduct(product: Product): Promise<{ success: boo
 export async function deleteApiProduct(id: string): Promise<{ success: boolean; message?: string }> {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const adminPasskey = typeof window !== 'undefined' ? (sessionStorage.getItem('zap_admin_pass') || 'zap@admin2026') : 'zap@admin2026';
+    const authToken = token || adminPasskey;
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
+      'Authorization': `Bearer ${authToken}`,
+      'x-admin-key': adminPasskey,
     };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(`${API_BASE}/api/products/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
+    let res: Response | null = null;
+    try {
+      res = await fetch(`/api/products/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+    } catch {
+      res = null;
+    }
 
-    const json = await res.json();
+    if (!res || res.status === 404) {
+      res = await fetch(`${API_BASE}/api/products/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+    }
+
+    const json = await res.json().catch(() => null);
     return {
-      success: res.ok && json.success,
-      message: json.message,
+      success: Boolean(res?.ok && json?.success),
+      message: json?.message,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to delete product';

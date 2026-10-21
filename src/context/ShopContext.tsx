@@ -32,7 +32,9 @@ import {
   deleteApiProduct,
   fetchApiBanners,
   saveAllApiBanners,
-  deleteApiBanner
+  deleteApiBanner,
+  transformBackendProduct,
+  RawBackendProduct
 } from '../services/api';
 
 
@@ -442,24 +444,37 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Products CRUD ──
   const addProduct = (product: Product) => {
     setProducts((prev) => [product, ...prev]);
-    showToast(`Product "${product.name.slice(0, 24)}..." published successfully!`);
+    showToast(`Publishing "${product.name.slice(0, 24)}..." to database...`);
     createApiProduct(product)
       .then((res) => {
-        if (!res.success) {
-          console.warn('Backend product creation warning:', res.message);
+        if (res.success && res.data) {
+          const rawBackend = res.data as RawBackendProduct;
+          const savedProd = transformBackendProduct(rawBackend);
+          // Replace optimistic product with actual saved product with real database ID
+          setProducts((prev) => prev.map((p) => (p.id === product.id ? savedProd : p)));
+          showToast(`Product "${savedProd.name.slice(0, 24)}" published to storefront & database!`);
+        } else {
+          console.error('Backend product creation warning:', res.message);
+          showToast(`Database alert: ${res.message || 'Product saved locally only'}`);
         }
       })
       .catch((err) => {
         console.error('Failed to sync created product with PostgreSQL:', err);
+        showToast('Error syncing product to database.');
       });
   };
 
   const updateProduct = (product: Product) => {
     setProducts((prev) => prev.map((p) => (p.id === product.id ? product : p)));
-    showToast(`Product "${product.name.slice(0, 24)}..." updated.`);
+    showToast(`Updating "${product.name.slice(0, 24)}..." in database...`);
     updateApiProduct(product.id, product)
       .then((res) => {
-        if (!res.success) {
+        if (res.success && res.data) {
+          const rawBackend = res.data as RawBackendProduct;
+          const savedProd = transformBackendProduct(rawBackend);
+          setProducts((prev) => prev.map((p) => (p.id === product.id ? savedProd : p)));
+          showToast(`Product "${savedProd.name.slice(0, 24)}" updated in database!`);
+        } else if (!res.success) {
           console.warn('Backend product update warning:', res.message);
         }
       })
