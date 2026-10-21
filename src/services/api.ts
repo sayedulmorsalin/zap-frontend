@@ -189,8 +189,9 @@ export async function fetchApiProducts(params?: {
     const endpoint = `/api/products${qs ? `?${qs}` : ''}`;
 
     let res: Response | null = null;
+    // 1. Try direct VPS backend URL first
     try {
-      res = await fetch(endpoint, {
+      res = await fetch(`${API_BASE}${endpoint}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
@@ -199,16 +200,22 @@ export async function fetchApiProducts(params?: {
       res = null;
     }
 
-    if (!res || res.status === 404) {
-      res = await fetch(`${API_BASE}${endpoint}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store',
-      });
+    // 2. If direct call failed, fallback to relative Next.js proxy route
+    if (!res || !res.ok) {
+      try {
+        const fallbackRes = await fetch(endpoint, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+        });
+        if (fallbackRes.ok) res = fallbackRes;
+      } catch {
+        // keep res as is
+      }
     }
 
-    if (!res.ok) {
-      throw new Error(`Failed to fetch products: ${res.statusText}`);
+    if (!res || !res.ok) {
+      throw new Error(`Failed to fetch products: ${res?.statusText || 'Server unreachable'}`);
     }
 
     const json = await res.json();
@@ -383,6 +390,79 @@ export async function createApiOrder(orderData: {
 
 
 /**
+ * Resilient API request executor:
+ * 1. Tries direct Dokploy VPS API_BASE first (CORS fully enabled)
+ * 2. Falls back to relative Next.js route if direct call fails
+ * 3. Extracts detailed error message from JSON/text
+ */
+async function resilientApiFetch(
+  endpoint: string,
+  options: RequestInit
+): Promise<{ ok: boolean; status: number; data?: unknown; message?: string }> {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const directUrl = `${API_BASE}${cleanEndpoint}`;
+  const relativeUrl = cleanEndpoint;
+
+  let res: Response | null = null;
+
+  // 1. Try direct VPS backend URL first
+  try {
+    res = await fetch(directUrl, options);
+  } catch {
+    res = null;
+  }
+
+  // 2. If direct call failed (e.g. DNS or network), fallback to relative Next.js proxy route
+  if (!res || (!res.ok && res.status >= 500)) {
+    try {
+      const fallbackRes = await fetch(relativeUrl, options);
+      if (fallbackRes.ok || !res) {
+        res = fallbackRes;
+      }
+    } catch {
+      // keep initial res
+    }
+  }
+
+  if (!res) {
+    return {
+      ok: false,
+      status: 0,
+      message: 'Unable to reach backend database server. Please check internet connection.',
+    };
+  }
+
+  let json: any = null;
+  let rawText = '';
+  try {
+    rawText = await res.text();
+    try {
+      json = JSON.parse(rawText);
+    } catch {
+      json = null;
+    }
+  } catch {
+    json = null;
+  }
+
+  const extractedMessage =
+    json?.message ||
+    json?.error ||
+    (json?.errors && typeof json.errors === 'object'
+      ? Object.values(json.errors).flat().join(', ')
+      : null) ||
+    (!rawText.startsWith('<') && rawText.length < 120 ? rawText.trim() : null) ||
+    (res.ok ? 'Success' : `Server responded with status ${res.status}`);
+
+  return {
+    ok: Boolean(res.ok && (json ? json.success !== false : true)),
+    status: res.status,
+    data: json?.data,
+    message: extractedMessage,
+  };
+}
+
+/**
  * Create a new product in PostgreSQL database
  */
 export async function createApiProduct(product: Product): Promise<{ success: boolean; data?: unknown; message?: string }> {
@@ -402,6 +482,38 @@ export async function createApiProduct(product: Product): Promise<{ success: boo
     const finalPrice = numRegularPrice > 0 ? numRegularPrice : (numPrice > 0 ? numPrice : 100);
     const finalSalePrice = (numPrice > 0 && numPrice < numRegularPrice) ? numPrice : null;
 
+    // Deduplicate sizes
+    const rawSizes = Array.isArray(product.sizes) && product.sizes.length > 0 ? product.sizes : ['39', '40', '41', '42', '43'];
+    const uniqueSizes = Array.from(new Set(rawSizes.map((s) => String(s).trim()).filter(Boolean)));
+    const finalSizes = uniqueSizes.length > 0 ? uniqueSizes : ['40', '41', '42'];
+
+    // Deduplicate colors
+    const rawColors = Array.isArray(product.colors) && product.colors.length > 0 ? product.colors : [{ name: 'Classic Black', hex: '#18181B' }];
+    const uniqueColors = Array.from(
+      new Map(rawColors.map((c) => [(c.name || 'Classic Black').trim().toLowerCase(), c])).values()
+    );
+
+    const variants = finalSizes.flatMap((size) =>
+      uniqueColors.map((c) => ({
+        size: String(size),
+        color: c.name || 'Classic Black',
+        colorHex: c.hex || '#18181B',
+        stock: 20,
+        additionalPrice: 0,
+      }))
+    );
+
+    const images = (product.images || [])
+      .filter((u): u is string => typeof u === 'string' && u.trim().length > 0)
+      .map((url, idx) => ({
+        url: url.trim(),
+        isPrimary: idx === 0,
+        order: idx,
+      }));
+
+    const cleanCategorySlug = (product.category || 'formal').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
+    const cleanBrandSlug = (product.brandSlug || (product.brand ? product.brand.toLowerCase().replace(/[^a-z0-9-]+/g, '-') : 'zap-signature'));
+
     const payload = {
       name: product.name || 'Unnamed Footwear',
       slug: product.slug,
@@ -412,51 +524,22 @@ export async function createApiProduct(product: Product): Promise<{ success: boo
       gender: product.gender || 'UNISEX',
       isFeatured: !!product.isFeatured,
       isActive: product.inStock !== false,
-      categorySlug: product.category || 'sneakers',
-      brandSlug: product.brandSlug || 'zap-signature',
-      images: (product.images || [])
-        .filter((u): u is string => typeof u === 'string' && u.trim().length > 0)
-        .map((url, idx) => ({
-          url,
-          isPrimary: idx === 0,
-          order: idx,
-        })),
-      variants: (product.sizes && product.sizes.length > 0 ? product.sizes : ['40', '41', '42']).flatMap((size) =>
-        (product.colors && product.colors.length > 0 ? product.colors : [{ name: 'Classic Black', hex: '#18181B' }]).map((c) => ({
-          size: String(size),
-          color: c.name,
-          colorHex: c.hex,
-          stock: 20,
-          additionalPrice: 0,
-        }))
-      ),
+      categorySlug: cleanCategorySlug || 'formal',
+      brandSlug: cleanBrandSlug || 'zap-signature',
+      images,
+      variants,
     };
 
-    // Strategy 1: Relative Next.js proxy route first (same-origin, bypasses browser CORS)
-    let res: Response | null = null;
-    try {
-      res = await fetch('/api/products', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-    } catch {
-      res = null;
-    }
+    const res = await resilientApiFetch('/api/products', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
 
-    if (!res || res.status === 404) {
-      res = await fetch(`${API_BASE}/api/products`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-    }
-
-    const json = await res.json().catch(() => null);
     return {
-      success: Boolean(res?.ok && json?.success),
-      data: json?.data,
-      message: json?.message || (res?.ok ? 'Product created successfully' : `Error (${res?.status})`),
+      success: res.ok,
+      data: res.data,
+      message: res.message,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to create product';
@@ -501,30 +584,16 @@ export async function updateApiProduct(id: string, product: Partial<Product>): P
       }));
     }
 
-    let res: Response | null = null;
-    try {
-      res = await fetch(`/api/products/${id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify(payload),
-      });
-    } catch {
-      res = null;
-    }
+    const res = await resilientApiFetch(`/api/products/${id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(payload),
+    });
 
-    if (!res || res.status === 404) {
-      res = await fetch(`${API_BASE}/api/products/${id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify(payload),
-      });
-    }
-
-    const json = await res.json().catch(() => null);
     return {
-      success: Boolean(res?.ok && json?.success),
-      data: json?.data,
-      message: json?.message,
+      success: res.ok,
+      data: res.data,
+      message: res.message,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to update product';
@@ -547,27 +616,14 @@ export async function deleteApiProduct(id: string): Promise<{ success: boolean; 
       'x-admin-key': adminPasskey,
     };
 
-    let res: Response | null = null;
-    try {
-      res = await fetch(`/api/products/${id}`, {
-        method: 'DELETE',
-        headers,
-      });
-    } catch {
-      res = null;
-    }
+    const res = await resilientApiFetch(`/api/products/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
 
-    if (!res || res.status === 404) {
-      res = await fetch(`${API_BASE}/api/products/${id}`, {
-        method: 'DELETE',
-        headers,
-      });
-    }
-
-    const json = await res.json().catch(() => null);
     return {
-      success: Boolean(res?.ok && json?.success),
-      message: json?.message,
+      success: res.ok,
+      message: res.message,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to delete product';
