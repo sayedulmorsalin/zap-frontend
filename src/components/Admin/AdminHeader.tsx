@@ -37,7 +37,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
     dashboard: { title: 'Executive Overview', subtitle: 'Live sales metrics, order pipeline, and catalog health' },
     products: { title: 'Footwear Catalog Manager', subtitle: 'Add, update pricing, manage stock, and organize collections' },
     orders: { title: 'Orders & Dispatches', subtitle: 'Live customer orders, shipping status, and logistics' },
-    banners: { title: 'Banners & Hero Showcase', subtitle: 'Manage homepage hero carousel slides, promotional split cards, and call-to-actions' },
+    banners: { title: 'Banners & Hero Showcase', subtitle: 'Manage homepage hero carousel slides and call-to-actions' },
     brands: { title: 'Curated Brands & Categories', subtitle: 'Organize brand portfolio and category taxonomy' },
 
     coupons: { title: 'Coupons & Campaign Promos', subtitle: 'Create discount codes, flash sales, and customer perks' },

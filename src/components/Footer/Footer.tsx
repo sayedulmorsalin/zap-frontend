@@ -8,6 +8,7 @@ import {
   Clock 
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
+import { ValueProps } from '../Features/ValueProps';
 
 export const Footer: React.FC = () => {
   const { 
@@ -30,7 +31,8 @@ export const Footer: React.FC = () => {
       borderTop: '1px solid #1E293B',
       marginTop: 'auto',
     }}>
-
+      {/* 4 Value Proposition Info Cards */}
+      <ValueProps />
 
       {/* Main Footer Links Columns */}
       <div style={{ padding: '60px 0 40px' }}>

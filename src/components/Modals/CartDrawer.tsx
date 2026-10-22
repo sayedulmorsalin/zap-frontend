@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { 
   X, 
   Trash2, 
@@ -15,6 +16,7 @@ import {
 import { useShop } from '../../context/ShopContext';
 
 export const CartDrawer: React.FC = () => {
+  const router = useRouter();
   const {
     cart,
     isCartOpen,
@@ -54,7 +56,7 @@ export const CartDrawer: React.FC = () => {
 
   const handleProceedToCheckout = () => {
     setIsCartOpen(false);
-    setIsCheckoutOpen(true);
+    router.push('/checkout');
   };
 
   return (

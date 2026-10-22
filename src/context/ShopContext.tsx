@@ -366,7 +366,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           if (apiBanners) {
             if (apiBanners.heroSlides?.length > 0) setHeroSlides(apiBanners.heroSlides);
-            if (apiBanners.promoBanners?.length > 0) setPromoBanners(apiBanners.promoBanners);
           }
 
         }
@@ -412,7 +411,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (apiUsersData.length > 0) setCustomers(apiUsersData);
               if (apiBanners) {
                 if (apiBanners.heroSlides?.length > 0) setHeroSlides(apiBanners.heroSlides);
-                if (apiBanners.promoBanners?.length > 0) setPromoBanners(apiBanners.promoBanners);
               }
             }
           }
@@ -596,14 +594,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addHeroSlide = (slide: HeroSlide) => {
     const updated = [...heroSlides, slide];
     setHeroSlides(updated);
-    saveAllApiBanners(updated, promoBanners);
+    saveAllApiBanners(updated, []);
     showToast('Hero slide added and synced to database.');
   };
 
   const updateHeroSlide = (slide: HeroSlide) => {
     const updated = heroSlides.map((s) => (s.id === slide.id ? slide : s));
     setHeroSlides(updated);
-    saveAllApiBanners(updated, promoBanners);
+    saveAllApiBanners(updated, []);
     showToast('Hero slide updated and synced to database.');
   };
 
@@ -616,7 +614,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const reorderHeroSlides = (newSlides: HeroSlide[]) => {
     setHeroSlides(newSlides);
-    saveAllApiBanners(newSlides, promoBanners);
+    saveAllApiBanners(newSlides, []);
     showToast('Hero slides reordered and synced.');
   };
 

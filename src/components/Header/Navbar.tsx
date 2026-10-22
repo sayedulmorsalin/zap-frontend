@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { 
   Search, 
   ShoppingBag, 
@@ -16,6 +17,7 @@ import {
 import { useShop } from '../../context/ShopContext';
 
 export const Navbar: React.FC = () => {
+  const router = useRouter();
   const {
     cartCount,
     cartSubtotal,
@@ -113,6 +115,7 @@ export const Navbar: React.FC = () => {
               setSelectedBrand('all');
               setSelectedCategory('all');
               setSelectedGender('ALL');
+              router.push('/');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             style={{
@@ -408,7 +411,7 @@ export const Navbar: React.FC = () => {
                 <div
                   key={product.id}
                   onClick={() => {
-                    setQuickViewProduct(product);
+                    router.push(`/products/${product.slug || product.id}`);
                     setIsSearchActive(false);
                   }}
                   style={{

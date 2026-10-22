@@ -191,7 +191,7 @@ export const ProductCatalog: React.FC = () => {
         </div>
 
         {/* Filter & Controls Toolbar */}
-        <div style={{
+        <div className="catalog-filter-bar" style={{
           backgroundColor: '#FFFFFF',
           borderRadius: '16px',
           border: '1px solid #E2E8F0',
@@ -388,11 +388,7 @@ export const ProductCatalog: React.FC = () => {
 
         {/* Product Grid */}
         {filteredProducts.length > 0 ? (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '24px',
-          }}>
+          <div className="product-catalog-grid">
             {filteredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

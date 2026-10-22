@@ -1,0 +1,85 @@
+import { Product } from '../types/product';
+
+export const ANCHOR_CREST_PRODUCT: Product = {
+  id: 'cmvi7rfj5000e13z7defvv889',
+  name: 'Anchor Crest Casual Shoes',
+  slug: 'anchor-crest-casual-shoes',
+  sku: 'C2287',
+  brand: 'ZAP Signature',
+  brandSlug: 'zap-signature',
+  category: 'casual',
+  categoryName: 'Casual Shoes',
+  gender: 'MEN',
+  price: 3740,
+  regularPrice: 3740,
+  isNewArrival: true,
+  isBestseller: true,
+  isFeatured: true,
+  rating: 4.9,
+  reviewCount: 24,
+  description: 'PU Leather + Mesh Material with Rubber Foam outsole and EVA insole. Designed for ultra-light comfort, all-day ergonomics, and bold urban aesthetics.',
+  features: [
+    'Color: Beige, Black, Black and White',
+    'Upper Material: PU Leather + Breathable Mesh Material',
+    'Outsole Material: Ergonomic Rubber Foam',
+    'Insole Material: Cushioned EVA Sole',
+    'Toe Shape: Round Head',
+    'Closure Type: Quick-Dial Lace Up',
+    'Pattern Type: Modern Outdoor Solid Color',
+    'Features: Anti-Slip, Wear-Resistant, Water-Resistant, Lightweight',
+  ],
+  images: [
+    'https://bd-5.edkncdn.net/img/800x800/stores/62244cd4d172ea73c7ec033b/product-square/1784549716761-p4fAeoNGZk4J29NxF-IAS/SKU Images (1)_page-0002.webp',
+    'https://bd-5.edkncdn.net/img/800x800/stores/62244cd4d172ea73c7ec033b/product-square/1784549716675-KO2KOGtYfltrt6Cb393Zh/SKU Images (1)_page-0003.webp',
+    'https://bd-5.edkncdn.net/img/800x800/stores/62244cd4d172ea73c7ec033b/product-square/1784549716776-wRF4hzbNkeCX8CCteUv4H/SKU Images (1)_page-0001.webp',
+    'https://bd-5.edkncdn.net/img/706x706/stores/62244cd4d172ea73c7ec033b/product-square/1784549727611-_L1dhNfmp5vrK2Snt7TVU/imageye___-_imgi_42_O1CN017xaifp1GmcWKQk3od_!!2214220710665.webp',
+    'https://bd-5.edkncdn.net/img/800x800/stores/62244cd4d172ea73c7ec033b/product-square/1784549726904-Wt6JOd4kKhyZ_kIIMxxkk/imageye___-_imgi_45_O1CN01VYuqz81GmcWKiuTvB_!!2214220710665.webp',
+    'https://bd-5.edkncdn.net/img/800x800/stores/62244cd4d172ea73c7ec033b/product-square/1784549726760-BE5PNvhrEIVOMXQogh2oP/imageye___-_imgi_46_O1CN01hrU0f31GmcWG3a8Kc_!!2214220710665.webp',
+  ],
+  sizes: ['39', '40', '41', '42', '43', '44'],
+  colors: [
+    { name: 'Beige', hex: '#E7D3B8' },
+    { name: 'Black', hex: '#18181B' },
+    { name: 'Black and White', hex: '#FFFFFF' },
+  ],
+  inStock: true,
+};
+
+export const COLOR_IMAGE_MAP: Record<string, string> = {
+  'Beige': 'https://bd-5.edkncdn.net/img/800x800/stores/62244cd4d172ea73c7ec033b/product-square/1784549716761-p4fAeoNGZk4J29NxF-IAS/SKU Images (1)_page-0002.webp',
+  'Black': 'https://bd-5.edkncdn.net/img/800x800/stores/62244cd4d172ea73c7ec033b/product-square/1784549716675-KO2KOGtYfltrt6Cb393Zh/SKU Images (1)_page-0003.webp',
+  'White and Black': 'https://bd-5.edkncdn.net/img/800x800/stores/62244cd4d172ea73c7ec033b/product-square/1784549716776-wRF4hzbNkeCX8CCteUv4H/SKU Images (1)_page-0001.webp',
+};
+
+export const SAMPLE_REVIEWS = [
+  {
+    id: 'rev-1',
+    author: 'Tanvir Hossain',
+    location: 'Dhaka (Uttara)',
+    rating: 5,
+    date: '2 days ago',
+    verified: true,
+    title: 'Extremely comfortable & lightweight',
+    comment: 'The dial lace system is amazing, no need to tie laces anymore! Sole cushioning is top notch. Delivery took only 2 days in Dhaka.',
+  },
+  {
+    id: 'rev-2',
+    author: 'Rashidul Karim',
+    location: 'Chittagong',
+    rating: 5,
+    date: '1 week ago',
+    verified: true,
+    title: 'Looks exactly like the xenno pictures',
+    comment: '100% authentic quality imported shoe. The finish and materials are super premium. Fits perfectly as per the size chart.',
+  },
+  {
+    id: 'rev-3',
+    author: 'Shakil Ahmed',
+    location: 'Sylhet',
+    rating: 5,
+    date: '2 weeks ago',
+    verified: true,
+    title: 'Best casual shoe for daily wear',
+    comment: 'Wear-resistant and good grip on rain. Very comfortable for long walking. Highly recommended!',
+  },
+];

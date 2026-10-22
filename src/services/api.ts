@@ -124,9 +124,12 @@ export function transformBackendProduct(bp: RawBackendProduct): Product {
   const variantColors = Array.isArray(bp.variants)
     ? Array.from(new Set(bp.variants.map((v) => v.color).filter((c): c is string => Boolean(c)))).map((cName) => ({
         name: cName,
-        hex: cName.toLowerCase().includes('white') ? '#FFFFFF' 
+        hex: cName.toLowerCase().includes('white') ? '#F8FAFC' 
+          : cName.toLowerCase().includes('beige') ? '#E7D3B8'
+          : cName.toLowerCase().includes('brown') || cName.toLowerCase().includes('tan') ? '#8B5A2B'
           : cName.toLowerCase().includes('red') ? '#DC2626'
           : cName.toLowerCase().includes('blue') || cName.toLowerCase().includes('navy') ? '#1E3A8A'
+          : cName.toLowerCase().includes('gray') || cName.toLowerCase().includes('grey') ? '#6B7280'
           : '#18181B'
       }))
     : [{ name: 'Black', hex: '#18181B' }];
@@ -229,6 +232,46 @@ export async function fetchApiProducts(params?: {
   } catch (err) {
     console.warn('[API fetchApiProducts Error]:', err);
     return { products: [], pagination: null };
+  }
+}
+
+/**
+ * Fetch a single product by ID or Slug from backend
+ */
+export async function fetchApiProduct(idOrSlug: string): Promise<Product | null> {
+  try {
+    const endpoint = `/api/products/${encodeURIComponent(idOrSlug)}`;
+    let res: Response | null = null;
+    try {
+      res = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+      });
+    } catch {
+      res = null;
+    }
+
+    if (!res || !res.ok) {
+      try {
+        const fallbackRes = await fetch(endpoint, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+        });
+        if (fallbackRes.ok) res = fallbackRes;
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!res || !res.ok) return null;
+    const json = await res.json();
+    if (!json.success || !json.data) return null;
+    return transformBackendProduct(json.data);
+  } catch (err) {
+    console.warn('[API fetchApiProduct Error]:', err);
+    return null;
   }
 }
 
@@ -864,7 +907,7 @@ export async function fetchApiCustomers(): Promise<Customer[]> {
 
 export interface ApiBannersResponse {
   heroSlides: HeroSlide[];
-  promoBanners: PromoBanner[];
+  promoBanners?: PromoBanner[];
 }
 
 /**
@@ -894,7 +937,7 @@ export async function fetchApiBanners(): Promise<ApiBannersResponse | null> {
  */
 export async function saveAllApiBanners(
   heroSlides: HeroSlide[],
-  promoBanners: PromoBanner[]
+  promoBanners: PromoBanner[] = []
 ): Promise<boolean> {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;

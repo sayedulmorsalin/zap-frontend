@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { 
   X, 
   ShoppingBag, 
@@ -10,11 +11,13 @@ import {
   Truck, 
   RotateCcw, 
   ShieldCheck, 
-  Ruler 
+  Ruler,
+  ExternalLink 
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 
 export const QuickViewModal: React.FC = () => {
+  const router = useRouter();
   const {
     quickViewProduct,
     setQuickViewProduct,
@@ -449,6 +452,36 @@ export const QuickViewModal: React.FC = () => {
                 <Heart size={20} color={wishlisted ? '#D32F2F' : '#64748B'} fill={wishlisted ? '#D32F2F' : 'none'} />
               </button>
             </div>
+
+            {/* Direct Link to Full Product Page */}
+            <button
+              onClick={() => {
+                setQuickViewProduct(null);
+                router.push(`/products/${product.slug || product.id}`);
+              }}
+              style={{
+                width: '100%',
+                padding: '10px',
+                border: '1px solid #000000',
+                backgroundColor: '#000000',
+                color: '#FFFFFF',
+                borderRadius: '8px',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'background 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#27272A')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#000000')}
+            >
+              <span>View Full Product Page</span>
+              <ExternalLink size={15} />
+            </button>
 
             {/* Trust Badges */}
             <div style={{

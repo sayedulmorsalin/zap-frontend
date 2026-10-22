@@ -33,13 +33,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   isOpen,
   onLogout,
 }) => {
-  const { orders, products, coupons, heroSlides, promoBanners } = useShop();
+  const { orders, products, coupons, heroSlides } = useShop();
 
   const pendingOrdersCount = orders.filter(
     (o) => o.status === 'PENDING' || o.status === 'CONFIRMED' || o.status === 'PROCESSING'
   ).length;
 
-  const totalBannersCount = (heroSlides?.length || 0) + (promoBanners?.length || 0);
+  const totalBannersCount = heroSlides?.length || 0;
 
   const navItems = [
     { id: 'dashboard' as AdminTab, label: 'Overview', icon: LayoutDashboard },

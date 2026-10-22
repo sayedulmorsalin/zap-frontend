@@ -5,8 +5,6 @@ import { AnnouncementBar } from '../components/Header/AnnouncementBar';
 import { Navbar } from '../components/Header/Navbar';
 import { HeroSlider } from '../components/Hero/HeroSlider';
 import { StoryCategories } from '../components/Hero/StoryCategories';
-import { ValueProps } from '../components/Features/ValueProps';
-import { PromoBanners } from '../components/Promo/PromoBanners';
 import { ProductCatalog } from '../components/Catalog/ProductCatalog';
 import { Footer } from '../components/Footer/Footer';
 
@@ -33,16 +31,10 @@ export default function Home() {
       <HeroSlider />
       <StoryCategories />
 
-      {/* 3. Value Proposition Bar */}
-      <ValueProps />
-
-      {/* 4. Promotional Duo Banners */}
-      <PromoBanners />
-
-      {/* 5. Core Product Showcase & Filter Catalog */}
+      {/* 3. Core Product Showcase & Filter Catalog */}
       <ProductCatalog />
 
-      {/* 6. Rich Footer */}
+      {/* 4. Rich Footer (with Value Proposition Info Cards) */}
       <Footer />
 
       {/* 9. Interactive Overlays & Modals */}

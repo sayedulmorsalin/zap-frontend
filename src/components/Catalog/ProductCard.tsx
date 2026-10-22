@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Heart, Eye, ShoppingBag, Star } from 'lucide-react';
 import { Product } from '../../types/product';
 import { useShop } from '../../context/ShopContext';
@@ -11,20 +12,21 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const router = useRouter();
   const { addToCart, toggleWishlist, isWishlisted, setQuickViewProduct } = useShop();
   const [selectedSize, setSelectedSize] = useState<string>(product.sizes[0] || '41');
   const [selectedColor, setSelectedColor] = useState<string>(product.colors[0]?.name || 'Standard');
   const [isHovered, setIsHovered] = useState(false);
 
   const wishlisted = isWishlisted(product.id);
-  const primaryImg = product.images[0];
-  const secondaryImg = product.images[1] || primaryImg;
+  const primaryImg = product.images?.[0] || '/images/shoe-leather-formal.jpg';
+  const secondaryImg = product.images?.[1] || primaryImg;
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Only open quick view if didn't click size pill or button
+    // Navigate to product page if didn't click button
     const target = e.target as HTMLElement;
     if (!target.closest('button')) {
-      setQuickViewProduct(product);
+      router.push(`/products/${product.slug || product.id}`);
     }
   };
 
@@ -33,6 +35,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       onClick={handleCardClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      className="product-card"
       style={{
         backgroundColor: '#FFFFFF',
         borderRadius: '16px',
@@ -72,6 +75,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           toggleWishlist(product.id);
         }}
         aria-label="Add to Wishlist"
+        className="product-card-wishlist"
         style={{
           position: 'absolute',
           top: '12px',
@@ -141,7 +145,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setQuickViewProduct(product);
+              router.push(`/products/${product.slug || product.id}`);
             }}
             className="btn btn-secondary btn-sm"
             style={{
@@ -154,13 +158,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             }}
           >
             <Eye size={14} color="#0F172A" />
-            <span>Quick View</span>
+            <span>View Details</span>
           </button>
         </div>
       </div>
 
       {/* Product Information Body */}
-      <div style={{
+      <div className="product-card-body" style={{
         padding: '16px',
         display: 'flex',
         flexDirection: 'column',
@@ -173,7 +177,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           justifyContent: 'space-between',
           marginBottom: '6px',
         }}>
-          <span style={{
+          <span className="product-card-brand" style={{
             fontSize: '0.72rem',
             fontWeight: 800,
             color: '#D32F2F',
@@ -182,7 +186,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           }}>
             {product.brand}
           </span>
-          <span style={{
+          <span className="product-card-gender" style={{
             fontSize: '0.72rem',
             color: '#64748B',
             fontWeight: 500,
@@ -192,7 +196,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </div>
 
         {/* Product Title */}
-        <h3 style={{
+        <h3 className="product-card-title" style={{
           fontSize: '0.95rem',
           fontWeight: 700,
           color: '#0F172A',
@@ -208,7 +212,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </h3>
 
         {/* Rating Stars */}
-        <div style={{
+        <div className="product-card-rating" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '5px',
@@ -233,21 +237,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </div>
 
         {/* Size Selection Chips */}
-        <div style={{ marginBottom: '12px' }}>
+        <div className="product-card-sizes" style={{ marginBottom: '12px' }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             marginBottom: '4px',
           }}>
-            <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>
+            <span className="product-card-sizes-label" style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>
               SIZE (EU):
             </span>
             <span style={{ fontSize: '0.7rem', color: '#0F172A', fontWeight: 800 }}>
               {selectedSize}
             </span>
           </div>
-          <div style={{
+          <div className="product-card-sizes-chips" style={{
             display: 'flex',
             gap: '6px',
             flexWrap: 'wrap',
@@ -259,6 +263,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   e.stopPropagation();
                   setSelectedSize(sz);
                 }}
+                className="product-card-size-btn"
                 style={{
                   width: '28px',
                   height: '26px',
@@ -283,8 +288,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Color Swatch Dots */}
         {product.colors.length > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>COLOR:</span>
+          <div className="product-card-colors" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+            <span className="product-card-colors-label" style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>COLOR:</span>
             <div style={{ display: 'flex', gap: '5px' }}>
               {product.colors.map((c) => (
                 <button
@@ -294,6 +299,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                     setSelectedColor(c.name);
                   }}
                   title={c.name}
+                  className="product-card-color-dot"
                   style={{
                     width: '16px',
                     height: '16px',
@@ -311,7 +317,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         )}
 
         {/* Price & Savings */}
-        <div style={{
+        <div className="product-card-pricing" style={{
           marginTop: 'auto',
           paddingTop: '10px',
           borderTop: '1px solid #F1F5F9',
@@ -321,7 +327,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           marginBottom: '14px',
         }}>
           <div>
-            <div style={{
+            <div className="product-card-price" style={{
               fontSize: '1.2rem',
               fontWeight: 900,
               color: '#0F172A',
@@ -330,14 +336,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </div>
             {product.regularPrice > product.price && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{
+                <span className="product-card-regular-price" style={{
                   fontSize: '0.8rem',
                   color: '#94A3B8',
                   textDecoration: 'line-through',
                 }} suppressHydrationWarning>
                   Tk {product.regularPrice.toLocaleString()}
                 </span>
-                <span style={{
+                <span className="product-card-save-badge" style={{
                   fontSize: '0.72rem',
                   fontWeight: 700,
                   color: '#15803D',
@@ -355,7 +361,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             e.stopPropagation();
             addToCart(product, selectedSize, selectedColor, 1);
           }}
-          className="btn btn-primary"
+          className="btn btn-primary product-card-btn"
           style={{
             width: '100%',
             padding: '10px 14px',

@@ -28,13 +28,13 @@ export const ValueProps: React.FC = () => {
   ];
 
   return (
-    <section style={{
+    <section className="footer-value-props" style={{
       backgroundColor: '#F8FAFC',
-      padding: '28px 0',
+      padding: '32px 0',
       borderBottom: '1px solid #E2E8F0',
     }}>
       <div className="container">
-        <div style={{
+        <div className="value-props-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
           gap: '20px',
@@ -42,6 +42,7 @@ export const ValueProps: React.FC = () => {
           {perks.map((p, idx) => (
             <div
               key={idx}
+              className="value-prop-card"
               style={{
                 display: 'flex',
                 alignItems: 'center',

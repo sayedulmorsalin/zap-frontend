@@ -60,31 +60,4 @@ export const INITIAL_HERO_SLIDES: HeroSlide[] = [
   },
 ];
 
-export const INITIAL_PROMO_BANNERS: PromoBanner[] = [
-  {
-    id: 'promo-1',
-    tag: 'POWER ATHLETICS',
-    title: 'SPEED & ENDURANCE 2026',
-    description: 'Explore lightweight running shoes with responsive kinetic rebound foam.',
-    image: '/images/shoe-power-runner.jpg',
-    badgeColor: '#E11D48',
-    ctaText: 'Shop Power Range',
-    targetType: 'brand',
-    targetValue: 'power',
-    isActive: true,
-    order: 1,
-  },
-  {
-    id: 'promo-2',
-    tag: 'MARIE CLAIRE PARIS',
-    title: 'PARISIAN CHIC HEELS',
-    description: 'Pointed stiletto pumps, comfortable block heels and evening sandals.',
-    image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=800&q=80',
-    badgeColor: '#9333EA',
-    ctaText: 'Shop Marie Claire',
-    targetType: 'brand',
-    targetValue: 'marie-claire',
-    isActive: true,
-    order: 2,
-  },
-];
+export const INITIAL_PROMO_BANNERS: PromoBanner[] = [];
