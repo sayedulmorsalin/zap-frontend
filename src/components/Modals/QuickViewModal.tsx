@@ -44,6 +44,12 @@ export const QuickViewModal: React.FC = () => {
     setQuickViewProduct(null);
   };
 
+  const handleBuyNow = () => {
+    addToCart(product, currentSize, currentColor, quantity);
+    setQuickViewProduct(null);
+    router.push('/checkout');
+  };
+
   return (
     <div className="modal-backdrop" onClick={() => setQuickViewProduct(null)}>
       <div
@@ -419,19 +425,51 @@ export const QuickViewModal: React.FC = () => {
                 </button>
               </div>
 
-              {/* Add to Cart */}
-              <button
-                onClick={handleAddToCart}
-                className="btn btn-primary"
-                style={{
-                  flex: 1,
-                  padding: '12px 20px',
-                  minWidth: '160px',
-                }}
-              >
-                <ShoppingBag size={18} />
-                <span>Add to Shopping Bag</span>
-              </button>
+              {/* Buy Now & Add to Bag Buttons */}
+              <div style={{ display: 'flex', gap: '10px', flex: 1, flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleBuyNow}
+                  className="btn"
+                  style={{
+                    flex: 1,
+                    minWidth: '130px',
+                    padding: '12px 18px',
+                    backgroundColor: '#0F172A',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  Buy Now
+                </button>
+
+                <button
+                  onClick={handleAddToCart}
+                  className="btn btn-primary"
+                  style={{
+                    flex: 1,
+                    minWidth: '140px',
+                    padding: '12px 18px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <ShoppingBag size={18} />
+                  <span>Add to Bag</span>
+                </button>
+              </div>
 
               {/* Wishlist toggle */}
               <button

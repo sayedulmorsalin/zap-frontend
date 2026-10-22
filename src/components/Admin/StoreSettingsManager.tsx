@@ -69,7 +69,11 @@ export const StoreSettingsManager: React.FC = () => {
                 value={formData.supportPhone}
                 onChange={(e) => setFormData({ ...formData, supportPhone: e.target.value })}
                 className="admin-input"
+                placeholder="+880 9666 777 222 or 017xxxxxxxx"
               />
+              <span style={{ fontSize: '0.7rem', color: '#64748B', display: 'block', marginTop: '4px' }}>
+                Connected directly to the customer floating WhatsApp button &amp; care hotline
+              </span>
             </div>
 
             <div>

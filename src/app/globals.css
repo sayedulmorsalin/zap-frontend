@@ -570,15 +570,17 @@ body {
 
   .vertical-thumbnails {
     flex-direction: row !important;
+    flex-wrap: wrap !important;
     width: 100% !important;
-    overflow-x: auto !important;
+    overflow-x: visible !important;
     gap: 8px !important;
     padding-bottom: 4px !important;
+    justify-content: flex-start !important;
   }
 
   .vertical-thumbnails button {
-    width: 56px !important;
-    height: 56px !important;
+    width: 52px !important;
+    height: 52px !important;
     flex-shrink: 0 !important;
   }
 
@@ -635,5 +637,160 @@ body {
     gap: 10px;
     z-index: 9980;
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* WhatsApp Floating Action Button */
+.floating-whatsapp-btn {
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.42), 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+@media (max-width: 680px) {
+  .floating-whatsapp-btn {
+    bottom: 78px !important;
+    right: 16px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    padding: 0 10px !important;
+  }
+
+  .floating-whatsapp-btn svg {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  .floating-whatsapp-btn span {
+    display: none !important;
+  }
+}
+
+.product-card-buy-btn:hover {
+  background-color: #1E293B !important;
+  border-color: #1E293B !important;
+}
+
+.product-card-bag-btn:hover {
+  background-color: #F8FAFC !important;
+  border-color: #94A3B8 !important;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 680px) {
+  .search-modal-container {
+    max-height: 88vh !important;
+    border-radius: 16px !important;
+    margin-top: 4px !important;
+  }
+}
+
+/* ─── Zero Horizontal Scroll: Responsive Mobile Options Fitting ─── */
+
+/* 1. Story Categories: 4-Column Grid on Mobile so all 8 are visible without scrolling */
+.story-categories-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+@media (max-width: 768px) {
+  .story-categories-track {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 14px 6px !important;
+    overflow-x: visible !important;
+    width: 100% !important;
+    justify-items: center !important;
+  }
+
+  .story-categories-track button {
+    width: 100% !important;
+    max-width: 80px !important;
+    margin: 0 auto !important;
+  }
+
+  .story-categories-track .story-ring {
+    width: 58px !important;
+    height: 58px !important;
+  }
+
+  .story-categories-track .story-title {
+    font-size: 0.68rem !important;
+    white-space: normal !important;
+    line-height: 1.15 !important;
+  }
+}
+
+/* 2. Quick Category Filter Pills: Wrap naturally so no horizontal scroll */
+.catalog-category-pills {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  overflow-x: visible;
+  justify-content: flex-start;
+}
+
+@media (max-width: 768px) {
+  .catalog-category-pills {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 7px !important;
+    overflow-x: visible !important;
+    padding-bottom: 8px !important;
+  }
+
+  .catalog-category-pills button {
+    padding: 7px 13px !important;
+    font-size: 0.78rem !important;
+    flex: 1 1 auto !important;
+    text-align: center !important;
+  }
+}
+
+/* 3. Product Detail Tabs: Fit cleanly on one screen */
+@media (max-width: 680px) {
+  .product-detail-tabs {
+    gap: 16px !important;
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    margin-bottom: 20px !important;
+  }
+
+  .product-detail-tabs button {
+    font-size: 0.92rem !important;
+    padding: 6px 0 10px 0 !important;
+  }
+}
+
+/* 4. Sizing Table: Compact padding on mobile so table fits without overflow */
+@media (max-width: 680px) {
+  .sizing-table-container table {
+    font-size: 0.74rem !important;
+  }
+
+  .sizing-table-container th,
+  .sizing-table-container td {
+    padding: 8px 5px !important;
   }
 }

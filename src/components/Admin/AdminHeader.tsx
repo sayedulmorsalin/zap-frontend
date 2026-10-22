@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
   Bell, 
-  RotateCcw, 
   ExternalLink, 
   Menu 
 } from 'lucide-react';
@@ -22,9 +21,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   toggleSidebar,
   setCurrentTab,
 }) => {
-  const { orders, resetToDefaults, apiStatus, apiInfo, refreshFromApi } = useShop();
+  const { orders, apiStatus, apiInfo, refreshFromApi } = useShop();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -46,11 +44,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   };
 
   const activeTabMeta = tabTitles[currentTab];
-
-  const handleReset = () => {
-    resetToDefaults();
-    setShowConfirmReset(false);
-  };
 
   return (
     <header className="admin-header">
@@ -223,58 +216,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             </div>
           )}
         </div>
-
-        {/* Factory Reset Button */}
-        <button
-          onClick={() => setShowConfirmReset(true)}
-          title="Reset to Demo Defaults"
-          className="admin-header-reset-btn"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            backgroundColor: '#F1F5F9',
-            border: '1px solid #E2E8F0',
-            color: '#475569',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            fontSize: '0.78rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >
-          <RotateCcw size={14} />
-          <span className="admin-header-reset-btn-text">Reset Demo</span>
-        </button>
       </div>
-
-      {/* Reset Confirmation Modal */}
-      {showConfirmReset && (
-        <div className="admin-modal-overlay">
-          <div className="admin-modal-box" style={{ maxWidth: '420px', padding: '24px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
-              Reset to Initial Demo State?
-            </h3>
-            <p style={{ fontSize: '0.85rem', color: '#64748B', marginBottom: '20px' }}>
-              This will re-populate all products, initial demo orders, coupons, and factory store settings from source data.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                onClick={() => setShowConfirmReset(false)}
-                className="btn btn-secondary btn-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReset}
-                className="btn btn-primary btn-sm"
-              >
-                Confirm Reset
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 };

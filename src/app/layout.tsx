@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { ShopProvider } from '../context/ShopContext';
+import { WhatsAppFloatingButton } from '../components/Common/WhatsAppFloatingButton';
+import { SearchModal } from '../components/Modals/SearchModal';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -29,6 +31,8 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <ShopProvider>
           {children}
+          <SearchModal />
+          <WhatsAppFloatingButton />
         </ShopProvider>
       </body>
     </html>

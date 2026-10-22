@@ -634,7 +634,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   e.currentTarget.style.borderColor = '#D1D5DB';
                 }}
               >
-                Add to Cart
+                Add to Bag
               </button>
             </div>
 
@@ -663,12 +663,15 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
         {/* ─── 4. Tabs Section (Description, Reviews, Size Guide) ─── */}
         <section style={{ marginTop: '56px', borderTop: '1px solid #E5E7EB', paddingTop: '28px' }}>
           {/* Tab Navigation */}
-          <div style={{
-            display: 'flex',
-            gap: '36px',
-            borderBottom: '1px solid #E5E7EB',
-            marginBottom: '28px',
-          }}>
+          <div 
+            className="product-detail-tabs"
+            style={{
+              display: 'flex',
+              gap: '36px',
+              borderBottom: '1px solid #E5E7EB',
+              marginBottom: '28px',
+            }}
+          >
             <button
               onClick={() => setActiveTab('description')}
               style={{
@@ -960,7 +963,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               </h4>
 
               {/* Sizing Table */}
-              <div style={{ overflowX: 'auto', marginBottom: '28px' }}>
+              <div className="sizing-table-container" style={{ overflowX: 'auto', marginBottom: '28px' }}>
                 <table style={{
                   width: '100%',
                   borderCollapse: 'collapse',
@@ -1123,38 +1126,6 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
         )}
       </main>
 
-      {/* ─── 6. Floating Messenger Support Chat Button ─── */}
-      <a
-        href="https://m.me"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Chat with support on Messenger"
-        className="floating-support-btn"
-        style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          width: '56px',
-          height: '56px',
-          borderRadius: '50%',
-          backgroundColor: '#0084FF',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 18px rgba(0, 132, 255, 0.45)',
-          zIndex: 9999,
-          color: '#FFFFFF',
-          textDecoration: 'none',
-          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-        title="Need help? Chat with us"
-      >
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.91 1.455 5.513 3.735 7.199V22l3.41-1.872c.915.253 1.884.39 2.855.39 5.523 0 10-4.145 10-9.26C22 6.145 17.523 2 12 2zm1.053 12.443l-2.69-2.868-5.244 2.868 5.767-6.12 2.76 2.868 5.174-2.868-5.767 6.12z"/>
-        </svg>
-      </a>
 
       {/* ─── 6b. Mobile Sticky Purchase Bar ─── */}
       <div className="mobile-sticky-bar">

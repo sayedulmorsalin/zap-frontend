@@ -31,6 +31,7 @@ export const Navbar: React.FC = () => {
     setSearchQuery,
     products,
     setQuickViewProduct,
+    setIsSearchOpen,
   } = useShop();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -324,8 +325,13 @@ export const Navbar: React.FC = () => {
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  const catalogElem = document.getElementById('product-catalog');
-                  if (catalogElem) catalogElem.scrollIntoView({ behavior: 'smooth' });
+                  setIsSearchActive(false);
+                  if (typeof window !== 'undefined' && window.location.pathname === '/') {
+                    const catalogElem = document.getElementById('product-catalog');
+                    if (catalogElem) catalogElem.scrollIntoView({ behavior: 'smooth' });
+                  } else {
+                    router.push(`/?search=${encodeURIComponent(searchQuery)}#product-catalog`);
+                  }
                 }
               }}
             />
@@ -433,8 +439,12 @@ export const Navbar: React.FC = () => {
                 <button
                   onClick={() => {
                     setIsSearchActive(false);
-                    const catalogElem = document.getElementById('product-catalog');
-                    if (catalogElem) catalogElem.scrollIntoView({ behavior: 'smooth' });
+                    if (typeof window !== 'undefined' && window.location.pathname === '/') {
+                      const catalogElem = document.getElementById('product-catalog');
+                      if (catalogElem) catalogElem.scrollIntoView({ behavior: 'smooth' });
+                    } else {
+                      router.push(`/?search=${encodeURIComponent(searchQuery)}#product-catalog`);
+                    }
                   }}
                   style={{
                     background: 'none',
@@ -455,8 +465,29 @@ export const Navbar: React.FC = () => {
           )}
         </div>
 
-        {/* Right Actions (Wishlist & Cart Bag) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        {/* Right Actions (Search, Wishlist & Cart Bag) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Mobile Search Button */}
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            aria-label="Search shoes"
+            className="mobile-search-btn"
+            style={{
+              display: 'none',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '8px',
+              borderRadius: '50%',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#1E293B',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Search size={22} color="#1E293B" />
+          </button>
+
           {/* Wishlist Button */}
           <button
             onClick={() => setIsWishlistOpen(true)}
@@ -583,22 +614,145 @@ export const Navbar: React.FC = () => {
           boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
           animation: 'slideDown 0.2s ease-out',
         }}>
-          {/* Mobile Search */}
+          {/* Mobile Search with live instant results */}
           <div style={{ marginBottom: '16px', position: 'relative' }}>
-            <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '12px' }} />
-            <input
-              type="text"
-              placeholder="Search shoe models, brands..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 14px 10px 36px',
-                borderRadius: '8px',
-                border: '1px solid #CBD5E1',
-                fontSize: '0.9rem',
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setIsMobileMenuOpen(false);
+                if (typeof window !== 'undefined' && window.location.pathname === '/') {
+                  const catalogElem = document.getElementById('product-catalog');
+                  if (catalogElem) catalogElem.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                  router.push(`/?search=${encodeURIComponent(searchQuery)}#product-catalog`);
+                }
               }}
-            />
+              style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
+            >
+              <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '12px' }} />
+              <input
+                type="search"
+                inputMode="search"
+                enterKeyHint="search"
+                placeholder="Search shoe models, brands, styles..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 38px 10px 36px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #CBD5E1',
+                  fontSize: '0.9rem',
+                  outline: 'none',
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#94A3B8',
+                    padding: '4px',
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </form>
+
+            {/* Mobile Live Results in Menu */}
+            {searchQuery.trim() !== '' && searchResults.length > 0 && (
+              <div style={{
+                marginTop: '8px',
+                backgroundColor: '#FFFFFF',
+                borderRadius: '8px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 6px 16px rgba(0,0,0,0.08)',
+                overflow: 'hidden',
+              }}>
+                {searchResults.map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      router.push(`/products/${product.slug || product.id}`);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '8px 10px',
+                      borderBottom: '1px solid #F1F5F9',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Image
+                      src={product.images[0]}
+                      alt={product.name}
+                      width={38}
+                      height={38}
+                      unoptimized
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        objectFit: 'cover',
+                        borderRadius: '4px',
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.68rem', color: '#D32F2F', fontWeight: 700 }}>
+                        {product.brand}
+                      </div>
+                      <div style={{
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        color: '#0F172A',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {product.name}
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0F172A' }}>
+                      Tk {product.price.toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    if (typeof window !== 'undefined' && window.location.pathname === '/') {
+                      const catalogElem = document.getElementById('product-catalog');
+                      if (catalogElem) catalogElem.scrollIntoView({ behavior: 'smooth' });
+                    } else {
+                      router.push(`/?search=${encodeURIComponent(searchQuery)}#product-catalog`);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    background: '#F8FAFC',
+                    border: 'none',
+                    color: '#D32F2F',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                  }}
+                >
+                  View all results in catalog
+                </button>
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -647,10 +801,16 @@ export const Navbar: React.FC = () => {
           .cart-text-desktop {
             display: flex !important;
           }
+          .mobile-search-btn {
+            display: none !important;
+          }
         }
         @media (max-width: 991px) {
           .mobile-hamburger-btn {
             display: block !important;
+          }
+          .mobile-search-btn {
+            display: flex !important;
           }
         }
       `}</style>

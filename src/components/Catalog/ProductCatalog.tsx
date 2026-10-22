@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { 
   RotateCcw, 
   ArrowUpDown, 
@@ -50,6 +50,23 @@ export const ProductCatalog: React.FC = () => {
   ];
 
   const sizes = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
+
+  // Check URL query parameters for search on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('search');
+      if (q && q.trim()) {
+        setSearchQuery(q.trim());
+        const catalogElem = document.getElementById('product-catalog');
+        if (catalogElem) {
+          setTimeout(() => {
+            catalogElem.scrollIntoView({ behavior: 'smooth' });
+          }, 150);
+        }
+      }
+    }
+  }, [setSearchQuery]);
 
   // Filter & Sort Logic
   const filteredProducts = useMemo(() => {
@@ -159,22 +176,24 @@ export const ProductCatalog: React.FC = () => {
         </div>
 
         {/* Quick Category Navigation Pills */}
-        <div style={{
-          display: 'flex',
-          gap: '10px',
-          overflowX: 'auto',
-          paddingBottom: '16px',
-          marginBottom: '24px',
-          scrollbarWidth: 'none',
-        }}>
+        <div 
+          className="catalog-category-pills"
+          style={{
+            display: 'flex',
+            gap: '10px',
+            flexWrap: 'wrap',
+            paddingBottom: '16px',
+            marginBottom: '24px',
+          }}
+        >
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
               style={{
-                padding: '10px 20px',
+                padding: '9px 18px',
                 borderRadius: 'var(--radius-full)',
-                fontSize: '0.875rem',
+                fontSize: '0.85rem',
                 fontWeight: 700,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',

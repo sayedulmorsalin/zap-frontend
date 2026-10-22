@@ -95,14 +95,17 @@ export const StoryCategories: React.FC = () => {
       borderBottom: '1px solid #E2E8F0',
     }}>
       <div className="container">
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '20px',
-          overflowX: 'auto',
-          paddingBottom: '8px',
-          scrollbarWidth: 'none',
-        }}>
+        <div 
+          className="story-categories-track"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '20px',
+            flexWrap: 'wrap',
+            paddingBottom: '8px',
+          }}
+        >
           {stories.map((story) => (
             <button
               key={story.id}
@@ -115,22 +118,23 @@ export const StoryCategories: React.FC = () => {
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: '8px',
-                flexShrink: 0,
                 textAlign: 'center',
                 width: '84px',
               }}
             >
-              <div style={{
-                width: '68px',
-                height: '68px',
-                borderRadius: '50%',
-                padding: '3px',
-                background: 'linear-gradient(135deg, #D32F2F, #F59E0B)',
-                boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
-                transition: 'transform 0.2s ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
-              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+              <div 
+                className="story-ring"
+                style={{
+                  width: '68px',
+                  height: '68px',
+                  borderRadius: '50%',
+                  padding: '3px',
+                  background: 'linear-gradient(135deg, #D32F2F, #F59E0B)',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                  transition: 'transform 0.2s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
               >
                 <div style={{
                   width: '100%',
@@ -154,12 +158,15 @@ export const StoryCategories: React.FC = () => {
                   />
                 </div>
               </div>
-              <span style={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                color: '#1E293B',
-                whiteSpace: 'nowrap',
-              }}>
+              <span 
+                className="story-title"
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: '#1E293B',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {story.title}
               </span>
             </button>

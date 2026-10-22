@@ -13,7 +13,7 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const router = useRouter();
-  const { addToCart, toggleWishlist, isWishlisted, setQuickViewProduct } = useShop();
+  const { addToCart, toggleWishlist, isWishlisted, setQuickViewProduct, setIsCartOpen } = useShop();
   const [selectedSize, setSelectedSize] = useState<string>(product.sizes[0] || '41');
   const [selectedColor, setSelectedColor] = useState<string>(product.colors[0]?.name || 'Standard');
   const [isHovered, setIsHovered] = useState(false);
@@ -28,6 +28,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     if (!target.closest('button')) {
       router.push(`/products/${product.slug || product.id}`);
     }
+  };
+
+  const handleBuyNow = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToCart(product, selectedSize, selectedColor, 1);
+    setIsCartOpen(false);
+    router.push('/checkout');
   };
 
   return (
@@ -290,7 +297,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {product.colors.length > 1 && (
           <div className="product-card-colors" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
             <span className="product-card-colors-label" style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>COLOR:</span>
-            <div style={{ display: 'flex', gap: '5px' }}>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
               {product.colors.map((c) => (
                 <button
                   key={c.name}
@@ -355,23 +362,61 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </div>
         </div>
 
-        {/* Add To Cart CTA Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            addToCart(product, selectedSize, selectedColor, 1);
-          }}
-          className="btn btn-primary product-card-btn"
-          style={{
-            width: '100%',
-            padding: '10px 14px',
-            fontSize: '0.875rem',
-            borderRadius: '8px',
-          }}
-        >
-          <ShoppingBag size={16} />
-          <span>Add to Bag</span>
-        </button>
+        {/* Buy Now & Add To Bag CTA Buttons */}
+        <div className="product-card-actions" style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '8px',
+          width: '100%',
+        }}>
+          <button
+            type="button"
+            onClick={handleBuyNow}
+            className="product-card-btn product-card-buy-btn"
+            style={{
+              padding: '9px 10px',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              borderRadius: '8px',
+              border: '1.5px solid #0F172A',
+              backgroundColor: '#0F172A',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span>Buy Now</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              addToCart(product, selectedSize, selectedColor, 1);
+            }}
+            className="btn btn-primary product-card-btn product-card-bag-btn"
+            style={{
+              padding: '9px 10px',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <ShoppingBag size={14} />
+            <span>Add to Bag</span>
+          </button>
+        </div>
       </div>
     </div>
   );
