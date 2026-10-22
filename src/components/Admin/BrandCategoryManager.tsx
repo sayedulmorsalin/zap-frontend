@@ -82,7 +82,7 @@ export const BrandCategoryManager: React.FC = () => {
   return (
     <div>
       {/* Brands Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
         <div>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
             Curated Brands Portfolio ({brands.length} Labels)
@@ -94,6 +94,7 @@ export const BrandCategoryManager: React.FC = () => {
         <button
           onClick={() => setIsAddBrandOpen(true)}
           className="btn btn-primary btn-sm"
+          style={{ width: 'auto' }}
         >
           <Plus size={16} />
           <span>Add New Brand</span>
@@ -103,7 +104,7 @@ export const BrandCategoryManager: React.FC = () => {
       {/* Brands Grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
         gap: '16px',
         marginBottom: '36px',
       }}>
@@ -375,7 +376,7 @@ export const BrandCategoryManager: React.FC = () => {
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+              <div className="admin-modal-actions">
                 <button
                   type="button"
                   onClick={() => setIsAddBrandOpen(false)}

@@ -107,7 +107,8 @@ export const CustomerManager: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        {/* Desktop View */}
+        <div className="admin-desktop-table-view" style={{ overflowX: 'auto' }}>
           <table className="admin-table">
             <thead>
               <tr>
@@ -232,6 +233,126 @@ export const CustomerManager: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile View */}
+        <div className="admin-mobile-cards-view" style={{ padding: '12px' }}>
+          {filteredCustomers.map((cust) => (
+            <div key={cust.id} className="admin-item-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    backgroundColor: cust.status === 'vip' ? '#FEF3C7' : '#F1F5F9',
+                    color: cust.status === 'vip' ? '#B45309' : '#0F172A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 800,
+                    fontSize: '0.9rem',
+                  }}>
+                    {cust.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.9rem' }}>
+                      {cust.name}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                      {cust.city}, {cust.division}
+                    </div>
+                  </div>
+                </div>
+
+                {cust.status === 'vip' ? (
+                  <span style={{
+                    backgroundColor: '#FEF3C7',
+                    color: '#B45309',
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                  }}>
+                    <Star size={11} fill="#B45309" /> VIP
+                  </span>
+                ) : (
+                  <span style={{
+                    backgroundColor: '#F1F5F9',
+                    color: '#475569',
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                  }}>
+                    MEMBER
+                  </span>
+                )}
+              </div>
+
+              <div style={{
+                backgroundColor: '#F8FAFC',
+                borderRadius: '8px',
+                padding: '8px 10px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: '0.75rem',
+              }}>
+                <div>
+                  <span style={{ color: '#64748B' }}>Total: </span>
+                  <strong>৳ {cust.totalSpent.toLocaleString()}</strong> ({cust.totalOrders} orders)
+                </div>
+                <div style={{ color: '#D97706', fontWeight: 700 }}>
+                  {cust.loyaltyPoints} pts
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingTop: '6px',
+                borderTop: '1px solid #F1F5F9',
+              }}>
+                <a
+                  href={`tel:${cust.phone}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    backgroundColor: '#DCFCE7',
+                    color: '#15803D',
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    textDecoration: 'none',
+                  }}
+                >
+                  <span>{cust.phone}</span>
+                </a>
+
+                <button
+                  onClick={() => deleteCustomer(cust.id)}
+                  style={{
+                    backgroundColor: '#FEE2E2',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 8px',
+                    cursor: 'pointer',
+                    color: '#DC2626',
+                  }}
+                  title="Remove Customer Record"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Add Customer Modal */}
@@ -292,7 +413,7 @@ export const CustomerManager: React.FC = () => {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="admin-grid-2col">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '4px' }}>
                     City / Area
@@ -320,7 +441,7 @@ export const CustomerManager: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '10px' }}>
+              <div className="admin-modal-actions">
                 <button
                   type="button"
                   onClick={() => setIsAddOpen(false)}

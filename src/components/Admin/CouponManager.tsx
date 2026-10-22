@@ -56,7 +56,7 @@ export const CouponManager: React.FC = () => {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
             Active Promotional Coupons ({coupons.length})
@@ -67,7 +67,8 @@ export const CouponManager: React.FC = () => {
         </div>
         <button
           onClick={() => setIsAddOpen(true)}
-          className="btn btn-primary btn-sm"
+          className="btn btn-primary"
+          style={{ width: '100%', maxWidth: '100%', justifyContent: 'center', padding: '10px 16px' }}
         >
           <Plus size={16} />
           <span>Create New Promo Code</span>
@@ -76,7 +77,8 @@ export const CouponManager: React.FC = () => {
 
       {/* Coupons Table */}
       <div className="admin-table-container">
-        <div style={{ overflowX: 'auto' }}>
+        {/* Desktop View */}
+        <div className="admin-desktop-table-view" style={{ overflowX: 'auto' }}>
           <table className="admin-table">
             <thead>
               <tr>
@@ -175,6 +177,85 @@ export const CouponManager: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile View */}
+        <div className="admin-mobile-cards-view" style={{ padding: '12px' }}>
+          {coupons.map((c) => (
+            <div key={c.id} className="admin-item-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Tag size={16} color="#D32F2F" />
+                  <span style={{
+                    fontFamily: 'monospace',
+                    fontWeight: 900,
+                    fontSize: '1rem',
+                    color: '#0F172A',
+                    backgroundColor: '#F1F5F9',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                  }}>
+                    {c.code}
+                  </span>
+                </div>
+                <span style={{ fontWeight: 900, color: '#16A34A', fontSize: '1rem' }}>
+                  {c.discountPercent}% OFF
+                </span>
+              </div>
+
+              <div style={{ fontSize: '0.78rem', color: '#64748B' }}>
+                {c.description}
+              </div>
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingTop: '8px',
+                borderTop: '1px solid #F1F5F9',
+                fontSize: '0.75rem',
+              }}>
+                <div>
+                  <span style={{ color: '#64748B' }}>Min: </span>
+                  <strong>৳ {c.minSpend.toLocaleString()}</strong>
+                  <span style={{ color: '#94A3B8', marginLeft: '4px' }}>• {c.expiresAt}</span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    onClick={() => handleToggleActive(c)}
+                    style={{
+                      backgroundColor: c.isActive ? '#DCFCE7' : '#F1F5F9',
+                      color: c.isActive ? '#15803D' : '#64748B',
+                      border: 'none',
+                      padding: '5px 10px',
+                      borderRadius: '20px',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {c.isActive ? 'ACTIVE' : 'DISABLED'}
+                  </button>
+
+                  <button
+                    onClick={() => deleteCoupon(c.id)}
+                    style={{
+                      backgroundColor: '#FEE2E2',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 8px',
+                      cursor: 'pointer',
+                      color: '#DC2626',
+                    }}
+                    title="Delete Coupon"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Add Coupon Modal */}
@@ -208,7 +289,7 @@ export const CouponManager: React.FC = () => {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="admin-grid-2col">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '4px' }}>
                     Discount Percentage (%) *
@@ -262,7 +343,7 @@ export const CouponManager: React.FC = () => {
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '10px' }}>
+              <div className="admin-modal-actions">
                 <button
                   type="button"
                   onClick={() => setIsAddOpen(false)}

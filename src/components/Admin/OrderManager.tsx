@@ -136,7 +136,8 @@ export const OrderManager: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        {/* Desktop Table View */}
+        <div className="admin-desktop-table-view" style={{ overflowX: 'auto' }}>
           <table className="admin-table">
             <thead>
               <tr>
@@ -268,6 +269,153 @@ export const OrderManager: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Orders Cards View */}
+        <div className="admin-mobile-cards-view" style={{ padding: '12px' }}>
+          {filteredOrders.map((ord) => (
+            <div key={ord.id} className="admin-item-card">
+              {/* Header: Order Number, Date, Status */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                <div>
+                  <div style={{ fontWeight: 900, color: '#D32F2F', fontSize: '0.95rem' }}>
+                    {ord.orderNumber}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#94A3B8', marginTop: '2px' }}>
+                    {new Date(ord.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+
+                <span style={{
+                  display: 'inline-block',
+                  backgroundColor: ord.paymentMethod === 'bkash' ? '#FDF2F8' : ord.paymentMethod === 'card' ? '#EFF6FF' : '#F8FAFC',
+                  color: ord.paymentMethod === 'bkash' ? '#BE185D' : ord.paymentMethod === 'card' ? '#1D4ED8' : '#334155',
+                  padding: '3px 8px',
+                  borderRadius: '6px',
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                }}>
+                  {ord.paymentMethod} • {ord.paymentStatus}
+                </span>
+              </div>
+
+              {/* Customer Info & Direct Call Button */}
+              <div style={{
+                backgroundColor: '#F8FAFC',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                border: '1px solid #F1F5F9',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.88rem' }}>
+                    {ord.customerName}
+                  </div>
+                  <a
+                    href={`tel:${ord.customerPhone}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      backgroundColor: '#DCFCE7',
+                      color: '#15803D',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <Phone size={12} />
+                    <span>Call</span>
+                  </a>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '3px' }}>
+                  {ord.shippingAddress}, {ord.city}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#94A3B8', marginTop: '3px' }}>
+                  {ord.items.length} {ord.items.length === 1 ? 'pair' : 'pairs'} ordered
+                </div>
+              </div>
+
+              {/* Bottom: Total & Quick Status Dropdown */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingTop: '8px',
+                borderTop: '1px solid #F1F5F9',
+                gap: '8px',
+                flexWrap: 'wrap',
+              }}>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 600 }}>TOTAL AMOUNT</div>
+                  <div style={{ fontWeight: 900, color: '#0F172A', fontSize: '1.05rem' }}>
+                    ৳ {ord.total.toLocaleString()}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <select
+                    value={ord.status}
+                    onChange={(e) => updateOrderStatus(ord.id, e.target.value as OrderStatus)}
+                    style={{
+                      padding: '6px 8px',
+                      borderRadius: '6px',
+                      border: '1.5px solid #CBD5E1',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      backgroundColor: '#FFFFFF',
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    <option value="PENDING">PENDING</option>
+                    <option value="CONFIRMED">CONFIRMED</option>
+                    <option value="PROCESSING">PROCESSING</option>
+                    <option value="SHIPPED">SHIPPED</option>
+                    <option value="DELIVERED">DELIVERED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                  </select>
+
+                  <button
+                    onClick={() => handleOpenInvoice(ord)}
+                    style={{
+                      backgroundColor: '#F1F5F9',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '6px',
+                      padding: '6px 8px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      color: '#0F172A',
+                    }}
+                  >
+                    <FileText size={13} />
+                    <span>Invoice</span>
+                  </button>
+
+                  <button
+                    onClick={() => setDeletingOrderId(ord.id)}
+                    style={{
+                      backgroundColor: '#FEE2E2',
+                      border: '1px solid #FECACA',
+                      borderRadius: '6px',
+                      padding: '6px 8px',
+                      cursor: 'pointer',
+                      color: '#DC2626',
+                    }}
+                    title="Delete Order"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

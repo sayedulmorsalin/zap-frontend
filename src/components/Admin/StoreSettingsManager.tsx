@@ -47,7 +47,7 @@ export const StoreSettingsManager: React.FC = () => {
             <span>Store Identity & Customer Care</span>
           </h4>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '4px' }}>
                 Store Official Title
@@ -111,7 +111,7 @@ export const StoreSettingsManager: React.FC = () => {
             <span>Shipping & Logistics Rules</span>
           </h4>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="admin-grid-2col">
             <div>
               <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '4px' }}>
                 Free Delivery Threshold (BDT ৳)

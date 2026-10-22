@@ -14,7 +14,8 @@ import {
   Shield,
   ChevronRight,
   LogOut,
-  Image as ImageIcon
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import { AdminTab } from '../../types/admin';
 import { useShop } from '../../context/ShopContext';
@@ -31,6 +32,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   currentTab,
   setCurrentTab,
   isOpen,
+  setIsOpen,
   onLogout,
 }) => {
   const { orders, products, coupons, heroSlides } = useShop();
@@ -79,6 +81,15 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Mobile Close Button */}
+        <button
+          onClick={() => setIsOpen(false)}
+          className="admin-sidebar-close-btn"
+          aria-label="Close Sidebar"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -100,7 +111,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           return (
             <button
               key={item.id}
-              onClick={() => setCurrentTab(item.id)}
+              onClick={() => {
+                setCurrentTab(item.id);
+                setIsOpen(false);
+              }}
               className={`admin-nav-item ${isActive ? 'active' : ''}`}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

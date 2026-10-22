@@ -15,7 +15,8 @@ import {
   ChevronRight,
   Database,
   Activity,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Phone
 } from 'lucide-react';
 
 import { useShop } from '../../context/ShopContext';
@@ -87,65 +88,55 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ setCurrent
   return (
     <div>
       {/* Backend Infrastructure Live Status Banner */}
-      <div style={{
-        backgroundColor: '#0F172A',
-        color: '#FFFFFF',
-        borderRadius: '16px',
-        padding: '18px 24px',
-        marginBottom: '24px',
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '16px',
-        boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.25)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      <div className="admin-db-banner">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
           <div style={{
-            width: '42px',
-            height: '42px',
+            width: '40px',
+            height: '40px',
             borderRadius: '12px',
             backgroundColor: apiStatus === 'connected' ? 'rgba(34, 197, 94, 0.15)' : apiStatus === 'db_disconnected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(234, 179, 8, 0.15)',
             color: apiStatus === 'connected' ? '#4ADE80' : apiStatus === 'db_disconnected' ? '#F87171' : '#FACC15',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            flexShrink: 0,
           }}>
-            <Database size={22} />
+            <Database size={20} />
           </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800 }}>
-                PostgreSQL & Next.js REST API
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 800 }}>
+                PostgreSQL & REST API
               </span>
               <span style={{
-                fontSize: '0.68rem',
+                fontSize: '0.65rem',
                 fontWeight: 800,
                 padding: '2px 8px',
                 borderRadius: '12px',
                 backgroundColor: apiStatus === 'connected' ? '#166534' : apiStatus === 'db_disconnected' ? '#991B1B' : '#854D0E',
                 color: apiStatus === 'connected' ? '#BBF7D0' : apiStatus === 'db_disconnected' ? '#FECACA' : '#FEF08A',
+                letterSpacing: '0.02em',
               }}>
                 {apiStatus === 'connected' 
                   ? 'LIVE & SYNCHRONIZED' 
                   : apiStatus === 'db_disconnected'
-                  ? 'DATABASE DISCONNECTED'
+                  ? 'DB DISCONNECTED'
                   : apiStatus === 'checking' 
                   ? 'CONNECTING...' 
-                  : 'API UNREACHABLE'}
+                  : 'API OFFLINE'}
               </span>
             </div>
             {apiInfo?.error ? (
-              <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#FCA5A5' }}>
+              <p style={{ margin: '4px 0 0', fontSize: '0.74rem', color: '#FCA5A5', wordBreak: 'break-word' }}>
                 Prisma Error: {apiInfo.error}
               </p>
             ) : apiStatus === 'offline' ? (
-              <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#FDE047' }}>
-                Cannot reach Backend API. Ensure BACKEND_API_URL points to your Dokploy API URL.
+              <p style={{ margin: '4px 0 0', fontSize: '0.74rem', color: '#FDE047' }}>
+                Backend API unreachable. Ensure Dokploy API container is active.
               </p>
             ) : (
-              <p style={{ margin: '3px 0 0', fontSize: '0.78rem', color: '#94A3B8' }}>
-                Database: <code style={{ color: '#E2E8F0' }}>{apiInfo?.database || 'shoeshop_db'}</code> &bull; API Port: 3001 &bull; Endpoints: /api/products, /api/brands, /api/orders
+              <p style={{ margin: '3px 0 0', fontSize: '0.74rem', color: '#94A3B8', wordBreak: 'break-word' }}>
+                Database: <code style={{ color: '#E2E8F0' }}>{apiInfo?.database || 'shoeshop_db'}</code> &bull; Port: 3001
               </p>
             )}
           </div>
@@ -157,15 +148,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ setCurrent
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '6px',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
               color: '#FFFFFF',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
+              border: '1px solid rgba(255, 255, 255, 0.18)',
               padding: '8px 14px',
               borderRadius: '8px',
               fontSize: '0.78rem',
               fontWeight: 700,
               cursor: 'pointer',
+              width: '100%',
               transition: 'background-color 0.15s ease',
             }}
           >
@@ -391,7 +384,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ setCurrent
           </button>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        {/* Desktop View */}
+        <div className="admin-desktop-table-view" style={{ overflowX: 'auto' }}>
           <table className="admin-table">
             <thead>
               <tr>
@@ -451,8 +445,111 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({ setCurrent
                   </td>
                 </tr>
               ))}
+              {orders.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#94A3B8' }}>
+                    No customer orders yet. Live orders will stream here automatically.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="admin-mobile-cards-view" style={{ padding: '12px' }}>
+          {orders.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '24px 12px',
+              backgroundColor: '#F8FAFC',
+              borderRadius: '10px',
+              color: '#64748B',
+              fontSize: '0.82rem',
+            }}>
+              No customer orders yet. Live orders will appear here automatically.
+            </div>
+          ) : (
+            orders.slice(0, 5).map((ord) => (
+              <div key={ord.id} className="admin-item-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <div>
+                    <span style={{ fontWeight: 800, color: '#D32F2F', fontSize: '0.85rem' }}>
+                      {ord.orderNumber}
+                    </span>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
+                      {ord.customerName}
+                    </div>
+                  </div>
+                  <div>{getStatusBadge(ord.status)}</div>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '0.78rem',
+                  color: '#64748B',
+                  marginBottom: '10px',
+                  paddingBottom: '8px',
+                  borderBottom: '1px solid #F1F5F9',
+                }}>
+                  <span>{ord.items.length} {ord.items.length === 1 ? 'pair' : 'pairs'} &bull; {ord.city}</span>
+                  <span style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.92rem' }}>
+                    ৳ {ord.total.toLocaleString()}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {ord.customerPhone && (
+                    <a
+                      href={`tel:${ord.customerPhone}`}
+                      style={{
+                        flex: '0 0 auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: '#ECFDF5',
+                        color: '#059669',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        border: '1px solid #A7F3D0',
+                      }}
+                    >
+                      <Phone size={13} />
+                      <span>Call</span>
+                    </a>
+                  )}
+
+                  <select
+                    value={ord.status}
+                    onChange={(e) => updateOrderStatus(ord.id, e.target.value as OrderStatus)}
+                    style={{
+                      flex: 1,
+                      padding: '7px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      backgroundColor: '#FFFFFF',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="PENDING">PENDING</option>
+                    <option value="CONFIRMED">CONFIRMED</option>
+                    <option value="PROCESSING">PROCESSING</option>
+                    <option value="SHIPPED">SHIPPED</option>
+                    <option value="DELIVERED">DELIVERED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                  </select>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

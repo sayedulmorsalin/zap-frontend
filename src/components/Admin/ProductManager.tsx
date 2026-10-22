@@ -290,12 +290,12 @@ export const ProductManager: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '16px',
-        marginBottom: '24px',
+        gap: '12px',
+        marginBottom: '20px',
       }}>
         {/* Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
-          <div style={{ position: 'relative', minWidth: '240px', flex: 1, maxWidth: '360px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1, width: '100%' }}>
+          <div style={{ position: 'relative', minWidth: '200px', flex: 1, width: '100%' }}>
             <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
@@ -307,51 +307,57 @@ export const ProductManager: React.FC = () => {
             />
           </div>
 
-          <select
-            value={selectedBrand}
-            onChange={(e) => setSelectedBrand(e.target.value)}
-            className="admin-input"
-            style={{ width: 'auto' }}
-          >
-            <option value="all">All Brands</option>
-            {brands.map((b) => (
-              <option key={b.id} value={b.name}>{b.name}</option>
-            ))}
-          </select>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%', maxWidth: '100%' }}>
+            <select
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+              className="admin-input"
+              style={{ flex: 1, minWidth: '95px' }}
+            >
+              <option value="all">All Brands</option>
+              {brands.map((b) => (
+                <option key={b.id} value={b.name}>{b.name}</option>
+              ))}
+            </select>
 
-          <select
-            value={selectedGender}
-            onChange={(e) => setSelectedGender(e.target.value)}
-            className="admin-input"
-            style={{ width: 'auto' }}
-          >
-            <option value="all">All Genders</option>
-            <option value="MEN">Men</option>
-            <option value="WOMEN">Women</option>
-            <option value="KIDS">Kids</option>
-            <option value="UNISEX">Unisex</option>
-          </select>
+            <select
+              value={selectedGender}
+              onChange={(e) => setSelectedGender(e.target.value)}
+              className="admin-input"
+              style={{ flex: 1, minWidth: '95px' }}
+            >
+              <option value="all">All Genders</option>
+              <option value="MEN">Men</option>
+              <option value="WOMEN">Women</option>
+              <option value="KIDS">Kids</option>
+              <option value="UNISEX">Unisex</option>
+            </select>
 
-          <select
-            value={stockFilter}
-            onChange={(e) => setStockFilter(e.target.value)}
-            className="admin-input"
-            style={{ width: 'auto' }}
-          >
-            <option value="all">All Stock</option>
-            <option value="in_stock">In Stock Only</option>
-            <option value="out_of_stock">Out of Stock</option>
-          </select>
+            <select
+              value={stockFilter}
+              onChange={(e) => setStockFilter(e.target.value)}
+              className="admin-input"
+              style={{ flex: 1, minWidth: '95px' }}
+            >
+              <option value="all">All Stock</option>
+              <option value="in_stock">In Stock Only</option>
+              <option value="out_of_stock">Out of Stock</option>
+            </select>
+          </div>
         </div>
 
         {/* Add Product Button */}
-        <button onClick={handleOpenAdd} className="btn btn-primary btn-sm">
+        <button
+          onClick={handleOpenAdd}
+          className="btn btn-primary"
+          style={{ width: '100%', maxWidth: '100%', justifyContent: 'center', padding: '10px 16px' }}
+        >
           <Plus size={16} />
           <span>Add New Footwear</span>
         </button>
       </div>
 
-      {/* Products Table */}
+      {/* Products Catalog Container */}
       <div className="admin-table-container">
         <div className="admin-table-header">
           <div>
@@ -364,7 +370,8 @@ export const ProductManager: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        {/* Desktop Table View */}
+        <div className="admin-desktop-table-view" style={{ overflowX: 'auto' }}>
           <table className="admin-table">
             <thead>
               <tr>
@@ -508,6 +515,165 @@ export const ProductManager: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Cards View */}
+        <div className="admin-mobile-cards-view" style={{ padding: '12px' }}>
+          {filteredProducts.map((p) => (
+            <div key={p.id} className="admin-item-card">
+              {/* Top row: Image & Basic Info */}
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                <div style={{
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  flexShrink: 0,
+                  position: 'relative',
+                }}>
+                  <Image
+                    src={p.images[0]}
+                    alt={p.name}
+                    width={60}
+                    height={60}
+                    unoptimized
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                    <div style={{
+                      fontWeight: 800,
+                      color: '#0F172A',
+                      fontSize: '0.88rem',
+                      lineHeight: 1.25,
+                      marginBottom: '4px',
+                    }}>
+                      {p.name}
+                    </div>
+                    <button
+                      onClick={() => handleToggleFeatured(p)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        color: p.isFeatured ? '#D97706' : '#CBD5E1',
+                        flexShrink: 0,
+                      }}
+                      title={p.isFeatured ? 'Featured on Homepage' : 'Mark as Featured'}
+                    >
+                      <Star size={18} fill={p.isFeatured ? '#D97706' : 'none'} />
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '4px' }}>
+                    <span style={{
+                      backgroundColor: '#F1F5F9',
+                      color: '#0F172A',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                    }}>
+                      {p.brand}
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>
+                      {p.gender} &bull; {p.categoryName}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                    SKU: <strong>{p.sku}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom row: Price, Stock toggle, Actions */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingTop: '10px',
+                borderTop: '1px solid #F1F5F9',
+                marginTop: '4px',
+                gap: '8px',
+                flexWrap: 'wrap',
+              }}>
+                <div>
+                  <div style={{ fontWeight: 900, color: '#D32F2F', fontSize: '0.98rem' }}>
+                    ৳ {p.price.toLocaleString()}
+                  </div>
+                  {p.regularPrice > p.price && (
+                    <div style={{ fontSize: '0.7rem', color: '#94A3B8', textDecoration: 'line-through' }}>
+                      ৳ {p.regularPrice.toLocaleString()}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    onClick={() => handleToggleStock(p)}
+                    style={{
+                      backgroundColor: p.inStock ? '#DCFCE7' : '#FEE2E2',
+                      color: p.inStock ? '#15803D' : '#B91C1C',
+                      border: 'none',
+                      padding: '5px 10px',
+                      borderRadius: '20px',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {p.inStock ? 'IN STOCK' : 'OUT'}
+                  </button>
+
+                  <button
+                    onClick={() => handleOpenEdit(p)}
+                    style={{
+                      backgroundColor: '#F1F5F9',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '6px',
+                      padding: '6px 10px',
+                      cursor: 'pointer',
+                      color: '#0F172A',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                    }}
+                    title="Edit Footwear"
+                  >
+                    <Edit3 size={14} />
+                    <span>Edit</span>
+                  </button>
+
+                  <button
+                    onClick={() => setDeletingProductId(p.id)}
+                    style={{
+                      backgroundColor: '#FEE2E2',
+                      border: '1px solid #FECACA',
+                      borderRadius: '6px',
+                      padding: '6px 8px',
+                      cursor: 'pointer',
+                      color: '#DC2626',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    title="Delete Footwear"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Add / Edit Modal */}
@@ -543,7 +709,7 @@ export const ProductManager: React.FC = () => {
               </div>
 
               {/* SKU & Brand */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="admin-grid-2col">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
                     SKU Code *
@@ -573,7 +739,7 @@ export const ProductManager: React.FC = () => {
               </div>
 
               {/* Category & Gender */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="admin-grid-2col">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
                     Category *
@@ -612,7 +778,7 @@ export const ProductManager: React.FC = () => {
               </div>
 
               {/* Price & Regular Price */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="admin-grid-2col">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
                     Selling Price (BDT ৳) *
@@ -947,7 +1113,7 @@ export const ProductManager: React.FC = () => {
               </div>
 
               {/* Sizes & Colors */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="admin-grid-2col">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
                     Sizes (comma separated)
@@ -1008,7 +1174,7 @@ export const ProductManager: React.FC = () => {
               </div>
 
               {/* Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+              <div className="admin-modal-actions">
                 <button
                   type="button"
                   onClick={() => { setIsAddOpen(false); setEditingProduct(null); }}

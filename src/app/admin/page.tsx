@@ -15,6 +15,7 @@ import { CouponManager } from '../../components/Admin/CouponManager';
 import { CustomerManager } from '../../components/Admin/CustomerManager';
 import { BannerManager } from '../../components/Admin/BannerManager';
 import { StoreSettingsManager } from '../../components/Admin/StoreSettingsManager';
+import { AdminBottomNav } from '../../components/Admin/AdminBottomNav';
 import { useShop } from '../../context/ShopContext';
 
 export default function AdminPage() {
@@ -288,12 +289,22 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Mobile Backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="admin-sidebar-backdrop"
+          onClick={() => setIsSidebarOpen(false)}
+          aria-label="Close menu backdrop"
+        />
+      )}
+
       {/* Sidebar */}
       <AdminSidebar
         currentTab={currentTab}
         setCurrentTab={(tab) => {
           setCurrentTab(tab);
           setIsSidebarOpen(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
@@ -312,6 +323,18 @@ export default function AdminPage() {
           {renderTabContent()}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <AdminBottomNav
+        currentTab={currentTab}
+        setCurrentTab={(tab) => {
+          setCurrentTab(tab);
+          setIsSidebarOpen(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onOpenSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        isSidebarOpen={isSidebarOpen}
+      />
     </div>
   );
 }

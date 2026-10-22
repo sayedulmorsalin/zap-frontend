@@ -55,53 +55,37 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   return (
     <header className="admin-header">
       {/* Left: Mobile Toggle & Tab Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
         <button
           onClick={toggleSidebar}
-          aria-label="Toggle Navigation"
-          style={{
-            display: 'none',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '6px',
-            color: '#0F172A',
-          }}
+          aria-label="Toggle Navigation Menu"
           className="admin-mobile-toggle"
         >
           <Menu size={22} />
         </button>
 
-        <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0F172A', margin: 0 }}>
+        <div className="admin-header-title-box">
+          <h1 className="admin-header-title">
             {activeTabMeta.title}
           </h1>
-          <p style={{ fontSize: '0.78rem', color: '#64748B', margin: 0, marginTop: '2px' }}>
+          <p className="admin-header-subtitle">
             {activeTabMeta.subtitle}
           </p>
         </div>
       </div>
 
       {/* Right Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="admin-header-actions">
         {/* Backend API Indicator */}
         <button
           onClick={handleRefresh}
           title={apiInfo ? `Database: ${apiInfo.database} (Port ${apiInfo.port}) - Click to sync` : 'Backend API Status - Click to sync'}
+          className="admin-header-db-pill"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
             backgroundColor: apiStatus === 'connected' ? '#EFF6FF' : apiStatus === 'db_disconnected' ? '#FEF2F2' : '#FEF3C7',
             color: apiStatus === 'connected' ? '#1D4ED8' : apiStatus === 'db_disconnected' ? '#DC2626' : '#B45309',
             border: `1px solid ${apiStatus === 'connected' ? '#BFDBFE' : apiStatus === 'db_disconnected' ? '#FECACA' : '#FDE68A'}`,
-            fontSize: '0.74rem',
-            fontWeight: 700,
-            padding: '5px 10px',
-            borderRadius: '20px',
-            cursor: 'pointer',
             opacity: isRefreshing ? 0.6 : 1,
-            transition: 'all 0.15s ease',
           }}
         >
           <span style={{
@@ -110,40 +94,32 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             borderRadius: '50%',
             backgroundColor: apiStatus === 'connected' ? '#2563EB' : apiStatus === 'db_disconnected' ? '#DC2626' : '#D97706',
             display: 'inline-block',
+            flexShrink: 0,
             boxShadow: apiStatus === 'connected' ? '0 0 0 2px rgba(37, 99, 235, 0.25)' : 'none',
             animation: apiStatus === 'connected' ? 'pulse 2s infinite' : 'none',
           }} />
-          <span>
+          <span className="admin-header-db-text">
             {isRefreshing 
               ? 'SYNCING...' 
               : apiStatus === 'connected' 
-              ? 'POSTGRESQL CONNECTED' 
+              ? 'POSTGRESQL' 
               : apiStatus === 'db_disconnected'
-              ? 'DATABASE DISCONNECTED'
+              ? 'NO DB'
               : apiStatus === 'checking' 
-              ? 'CONNECTING API...' 
-              : 'API: OFFLINE'}
+              ? 'CONNECTING' 
+              : 'OFFLINE'}
           </span>
         </button>
 
-        {/* Live Storefront Indicator */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          backgroundColor: '#DCFCE7',
-          color: '#15803D',
-          fontSize: '0.74rem',
-          fontWeight: 700,
-          padding: '5px 10px',
-          borderRadius: '20px',
-        }}>
+        {/* Live Storefront Indicator (hidden on small mobile to conserve space) */}
+        <div className="admin-header-store-live">
           <span style={{
-            width: '8px',
-            height: '8px',
+            width: '7px',
+            height: '7px',
             borderRadius: '50%',
             backgroundColor: '#16A34A',
             display: 'inline-block',
+            flexShrink: 0,
             boxShadow: '0 0 0 2px rgba(22, 163, 74, 0.25)',
           }} />
           <span>STORE LIVE</span>
@@ -153,21 +129,10 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         <Link
           href="/"
           target="_blank"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            backgroundColor: '#0F172A',
-            color: '#FFFFFF',
-            fontSize: '0.8rem',
-            fontWeight: 700,
-            padding: '8px 14px',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            transition: 'background-color 0.15s ease',
-          }}
+          title="View Live Storefront"
+          className="admin-header-store-btn"
         >
-          <span>Storefront</span>
+          <span className="admin-header-store-btn-text">Store</span>
           <ExternalLink size={14} />
         </Link>
 
@@ -176,9 +141,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             aria-label="Notifications"
+            className="admin-header-icon-btn"
             style={{
-              width: '38px',
-              height: '38px',
+              position: 'relative',
               borderRadius: '8px',
               border: '1px solid #E2E8F0',
               backgroundColor: '#FFFFFF',
@@ -187,7 +152,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
               justifyContent: 'center',
               cursor: 'pointer',
               color: '#334155',
-              position: 'relative',
             }}
           >
             <Bell size={18} />
@@ -264,6 +228,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         <button
           onClick={() => setShowConfirmReset(true)}
           title="Reset to Demo Defaults"
+          className="admin-header-reset-btn"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -279,7 +244,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           }}
         >
           <RotateCcw size={14} />
-          <span>Reset Demo</span>
+          <span className="admin-header-reset-btn-text">Reset Demo</span>
         </button>
       </div>
 

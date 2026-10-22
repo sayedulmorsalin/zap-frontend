@@ -302,70 +302,94 @@ export const BannerManager: React.FC = () => {
                 heroSlides.map((slide, idx) => (
                   <div
                     key={slide.id}
+                    className="admin-banner-row"
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '16px',
-                      padding: '16px 20px',
                       borderBottom: idx < heroSlides.length - 1 ? '1px solid #F1F5F9' : 'none',
                       backgroundColor: slide.isActive ? '#FFFFFF' : '#F8FAFC',
                       opacity: slide.isActive ? 1 : 0.65,
                       transition: 'background-color 0.15s ease',
+                      flexWrap: 'wrap',
                     }}
                   >
-                    {/* Reorder Arrows */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <button
-                        onClick={() => handleMoveSlide(idx, 'up')}
-                        disabled={idx === 0}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: idx === 0 ? 'not-allowed' : 'pointer',
-                          color: idx === 0 ? '#CBD5E1' : '#64748B',
-                          padding: '2px',
-                        }}
-                        title="Move Slide Up"
-                      >
-                        <ArrowUp size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleMoveSlide(idx, 'down')}
-                        disabled={idx === heroSlides.length - 1}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: idx === heroSlides.length - 1 ? 'not-allowed' : 'pointer',
-                          color: idx === heroSlides.length - 1 ? '#CBD5E1' : '#64748B',
-                          padding: '2px',
-                        }}
-                        title="Move Slide Down"
-                      >
-                        <ArrowDown size={16} />
-                      </button>
-                    </div>
+                    {/* Top Row on Mobile: Order & Status */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', minWidth: '120px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {/* Order Badge */}
+                        <div style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '6px',
+                          backgroundColor: '#0F172A',
+                          color: '#FFFFFF',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          #{idx + 1}
+                        </div>
 
-                    {/* Order Badge */}
-                    <div style={{
-                      width: '26px',
-                      height: '26px',
-                      borderRadius: '6px',
-                      backgroundColor: '#0F172A',
-                      color: '#FFFFFF',
-                      fontSize: '0.75rem',
-                      fontWeight: 800,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      #{idx + 1}
+                        {/* Reorder Arrows */}
+                        <div style={{ display: 'flex', gap: '2px' }}>
+                          <button
+                            onClick={() => handleMoveSlide(idx, 'up')}
+                            disabled={idx === 0}
+                            style={{
+                              background: '#F1F5F9',
+                              border: '1px solid #E2E8F0',
+                              borderRadius: '4px',
+                              cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                              color: idx === 0 ? '#CBD5E1' : '#64748B',
+                              padding: '3px 5px',
+                              display: 'flex',
+                              alignItems: 'center',
+                            }}
+                            title="Move Slide Up"
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleMoveSlide(idx, 'down')}
+                            disabled={idx === heroSlides.length - 1}
+                            style={{
+                              background: '#F1F5F9',
+                              border: '1px solid #E2E8F0',
+                              borderRadius: '4px',
+                              cursor: idx === heroSlides.length - 1 ? 'not-allowed' : 'pointer',
+                              color: idx === heroSlides.length - 1 ? '#CBD5E1' : '#64748B',
+                              padding: '3px 5px',
+                              display: 'flex',
+                              alignItems: 'center',
+                            }}
+                            title="Move Slide Down"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Status Badge */}
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        padding: '3px 8px',
+                        borderRadius: '999px',
+                        backgroundColor: slide.isActive ? '#DCFCE7' : '#F1F5F9',
+                        color: slide.isActive ? '#15803D' : '#64748B',
+                      }}>
+                        {slide.isActive ? 'Active' : 'Hidden'}
+                      </span>
                     </div>
 
                     {/* Thumbnail */}
                     <div style={{
                       position: 'relative',
-                      width: '110px',
-                      height: '68px',
+                      width: '100px',
+                      height: '64px',
                       borderRadius: '8px',
                       overflow: 'hidden',
                       backgroundColor: '#0F172A',
@@ -382,8 +406,8 @@ export const BannerManager: React.FC = () => {
                     </div>
 
                     {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <div style={{ flex: 1, minWidth: '180px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                         <span style={{
                           backgroundColor: slide.accentColor || '#D32F2F',
                           color: '#FFFFFF',
@@ -419,40 +443,26 @@ export const BannerManager: React.FC = () => {
                         </span>
                         {slide.secondaryCtaText && (
                           <span>
-                            • <strong style={{ color: '#475569' }}>Secondary:</strong> {slide.secondaryCtaText} → {slide.secondaryCtaTargetType}: {slide.secondaryCtaTargetValue}
+                            • <strong style={{ color: '#475569' }}>Secondary:</strong> {slide.secondaryCtaText}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Status Badge */}
-                    <div style={{ flexShrink: 0 }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        padding: '4px 10px',
-                        borderRadius: '999px',
-                        backgroundColor: slide.isActive ? '#DCFCE7' : '#F1F5F9',
-                        color: slide.isActive ? '#15803D' : '#64748B',
-                      }}>
-                        {slide.isActive ? 'Active & Live' : 'Hidden'}
-                      </span>
-                    </div>
-
                     {/* Action Buttons */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                       <button
                         onClick={() => updateHeroSlide({ ...slide, isActive: !slide.isActive })}
                         style={{
                           backgroundColor: '#F1F5F9',
-                          border: 'none',
+                          border: '1px solid #E2E8F0',
                           borderRadius: '6px',
                           padding: '8px',
                           cursor: 'pointer',
                           color: slide.isActive ? '#64748B' : '#059669',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                         }}
                         title={slide.isActive ? 'Deactivate Slide' : 'Activate Slide'}
                       >
@@ -463,26 +473,35 @@ export const BannerManager: React.FC = () => {
                         onClick={() => handleOpenEditHero(slide)}
                         style={{
                           backgroundColor: '#F1F5F9',
-                          border: 'none',
+                          border: '1px solid #E2E8F0',
                           borderRadius: '6px',
-                          padding: '8px',
+                          padding: '8px 12px',
                           cursor: 'pointer',
                           color: '#0F172A',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
                         }}
                         title="Edit Slide Content & Visuals"
                       >
-                        <Edit3 size={16} />
+                        <Edit3 size={15} />
+                        <span>Edit</span>
                       </button>
 
                       <button
                         onClick={() => deleteHeroSlide(slide.id)}
                         style={{
                           backgroundColor: '#FEE2E2',
-                          border: 'none',
+                          border: '1px solid #FECACA',
                           borderRadius: '6px',
                           padding: '8px',
                           cursor: 'pointer',
                           color: '#DC2626',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                         }}
                         title="Delete Slide"
                       >
@@ -587,29 +606,8 @@ export const BannerManager: React.FC = () => {
           HERO SLIDE EDIT / ADD MODAL
       ────────────────────────────────────────────────────────────── */}
       {isHeroModalOpen && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.75)',
-          backdropFilter: 'blur(6px)',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
-          overflowY: 'auto',
-        }}>
-          <div style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '820px',
-            maxHeight: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-          }}>
+        <div className="admin-modal-overlay">
+          <div className="admin-modal-box" style={{ maxWidth: '820px', padding: 0 }}>
             {/* Modal Header */}
             <div style={{
               padding: '18px 24px',
@@ -659,7 +657,7 @@ export const BannerManager: React.FC = () => {
                     position: 'relative',
                     overflow: 'hidden',
                     display: 'grid',
-                    gridTemplateColumns: '1.2fr 0.8fr',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
                     gap: '16px',
                     alignItems: 'center',
                   }}>
@@ -985,7 +983,7 @@ export const BannerManager: React.FC = () => {
                   <h4 style={{ fontSize: '0.85rem', fontWeight: 800, margin: '0 0 12px', color: '#0F172A' }}>
                     Primary CTA Button Action
                   </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '12px' }}>
+                  <div className="admin-grid-3col">
                     <div>
                       <label className="form-label" style={{ fontSize: '0.75rem' }}>Button Text</label>
                       <input
@@ -1070,7 +1068,7 @@ export const BannerManager: React.FC = () => {
                   <h4 style={{ fontSize: '0.85rem', fontWeight: 800, margin: '0 0 12px', color: '#0F172A' }}>
                     Secondary CTA Button Action (Optional)
                   </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '12px' }}>
+                  <div className="admin-grid-3col">
                     <div>
                       <label className="form-label" style={{ fontSize: '0.75rem' }}>Button Text</label>
                       <input

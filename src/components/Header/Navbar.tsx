@@ -10,7 +10,6 @@ import {
   Menu, 
   X, 
   ChevronDown, 
-  Percent, 
   Sparkles,
   ArrowRight
 } from 'lucide-react';
@@ -81,16 +80,6 @@ export const Navbar: React.FC = () => {
     }
   };
 
-  const handleSaleClick = () => {
-    setSelectedCategory('all');
-    setSelectedBrand('all');
-    setIsMobileMenuOpen(false);
-
-    const catalogElem = document.getElementById('product-catalog');
-    if (catalogElem) {
-      catalogElem.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <header style={{
@@ -273,31 +262,6 @@ export const Navbar: React.FC = () => {
               </div>
             )}
           </div>
-
-          <button
-            onClick={handleSaleClick}
-            style={{
-              ...navLinkStyle,
-              color: '#D32F2F',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
-          >
-            <Percent size={14} />
-            <span>SALE</span>
-            <span style={{
-              background: '#D32F2F',
-              color: '#FFFFFF',
-              fontSize: '0.625rem',
-              fontWeight: 800,
-              padding: '2px 6px',
-              borderRadius: '999px',
-              letterSpacing: '0.04em',
-            }}>
-              UP TO 50%
-            </span>
-          </button>
 
           <button
             onClick={() => {
@@ -641,9 +605,6 @@ export const Navbar: React.FC = () => {
             <button onClick={() => handleGenderClick('MEN')} style={mobileNavLinkStyle}>MEN&apos;S SHOES</button>
             <button onClick={() => handleGenderClick('WOMEN')} style={mobileNavLinkStyle}>WOMEN&apos;S SHOES</button>
             <button onClick={() => handleGenderClick('KIDS')} style={mobileNavLinkStyle}>KIDS&apos; COLLECTION</button>
-            <button onClick={handleSaleClick} style={{ ...mobileNavLinkStyle, color: '#D32F2F', fontWeight: 700 }}>
-              SPECIAL SALE OFFERS (-50%)
-            </button>
           </div>
 
           <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E2E8F0' }}>
