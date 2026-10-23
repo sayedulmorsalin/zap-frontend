@@ -36,15 +36,58 @@ export const QuickViewModal: React.FC = () => {
 
   const product = quickViewProduct;
   const wishlisted = isWishlisted(product.id);
-  const currentSize = selectedSize || product.sizes[0] || '41';
-  const currentColor = selectedColor || product.colors[0]?.name || 'Standard';
+
+  // Determine active color
+  const currentColor = selectedColor || product.colors[0]?.name || product.colorVariants?.[0]?.color || 'Standard';
+
+  // Find colorway group matching active color
+  const selectedColorway = product.colorVariants?.find(
+    (cv) => cv.color.toLowerCase() === currentColor.toLowerCase()
+  );
+
+  // Images for this colorway or fallback to general product images
+  const activeImages = (selectedColorway && selectedColorway.images && selectedColorway.images.length > 0)
+    ? selectedColorway.images
+    : product.images;
+
+  // Build size -> stock map for selected color
+  const sizeStockMap: { [size: string]: number } = {};
+  if (selectedColorway && selectedColorway.sizes.length > 0) {
+    selectedColorway.sizes.forEach((s) => {
+      sizeStockMap[s.size] = typeof s.stock === 'number' ? s.stock : Number(s.stock) || 0;
+    });
+  } else if (product.variants && product.variants.length > 0) {
+    product.variants
+      .filter((v) => (v.color || '').toLowerCase() === currentColor.toLowerCase())
+      .forEach((v) => {
+        sizeStockMap[v.size] = typeof v.stock === 'number' ? v.stock : Number(v.stock) || 0;
+      });
+  } else {
+    product.sizes.forEach((sz) => {
+      sizeStockMap[sz] = 10;
+    });
+  }
+
+  // Determine available sizes for this colorway
+  const availableSizes = selectedColorway && selectedColorway.sizes.length > 0
+    ? selectedColorway.sizes.map((s) => s.size)
+    : product.sizes;
+
+  const currentSize = selectedSize && availableSizes.includes(selectedSize)
+    ? selectedSize
+    : (availableSizes[0] || '41');
+
+  const currentAvailableStock = sizeStockMap[currentSize] ?? 0;
+  const isOutOfStock = currentAvailableStock <= 0;
 
   const handleAddToCart = () => {
+    if (isOutOfStock) return;
     addToCart(product, currentSize, currentColor, quantity);
     setQuickViewProduct(null);
   };
 
   const handleBuyNow = () => {
+    if (isOutOfStock) return;
     addToCart(product, currentSize, currentColor, quantity);
     setQuickViewProduct(null);
     router.push('/checkout');
@@ -121,8 +164,8 @@ export const QuickViewModal: React.FC = () => {
               position: 'relative',
             }}>
               <Image
-                src={product.images[activeImageIdx] || product.images[0]}
-                alt={product.name}
+                src={activeImages[activeImageIdx] || activeImages[0] || product.images[0]}
+                alt={`${product.name} - ${currentColor}`}
                 width={500}
                 height={500}
                 unoptimized
@@ -141,9 +184,9 @@ export const QuickViewModal: React.FC = () => {
             </div>
 
             {/* Thumbnail Gallery */}
-            {product.images.length > 1 && (
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {product.images.map((img, idx) => (
+            {activeImages.length > 1 && (
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                {activeImages.map((img, idx) => (
                   <button
                     key={idx}
                     onClick={() => setActiveImageIdx(idx)}
@@ -204,12 +247,13 @@ export const QuickViewModal: React.FC = () => {
               {product.name}
             </h2>
 
-            {/* Ratings */}
+            {/* Ratings & Stock Badge */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
               marginBottom: '16px',
+              flexWrap: 'wrap',
             }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -225,18 +269,43 @@ export const QuickViewModal: React.FC = () => {
                 {product.rating}
               </span>
               <span style={{ fontSize: '0.8rem', color: '#64748B' }}>
-                ({product.reviewCount} verified reviews)
+                ({product.reviewCount} reviews)
               </span>
-              <span style={{
-                fontSize: '0.75rem',
-                color: '#15803D',
-                fontWeight: 700,
-                backgroundColor: '#DCFCE7',
-                padding: '2px 8px',
-                borderRadius: '4px',
-              }}>
-                In Stock
-              </span>
+
+              {isOutOfStock ? (
+                <span style={{
+                  fontSize: '0.75rem',
+                  color: '#DC2626',
+                  fontWeight: 700,
+                  backgroundColor: '#FEE2E2',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                }}>
+                  Out of Stock
+                </span>
+              ) : currentAvailableStock <= 5 ? (
+                <span style={{
+                  fontSize: '0.75rem',
+                  color: '#D97706',
+                  fontWeight: 700,
+                  backgroundColor: '#FEF3C7',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                }}>
+                  Only {currentAvailableStock} left in Size {currentSize}!
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: '0.75rem',
+                  color: '#15803D',
+                  fontWeight: 700,
+                  backgroundColor: '#DCFCE7',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                }}>
+                  In Stock ({currentAvailableStock} pairs)
+                </span>
+              )}
             </div>
 
             {/* Price Box */}
@@ -278,7 +347,66 @@ export const QuickViewModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Size Selector */}
+            {/* Color Selector */}
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#0F172A' }}>
+                  COLORWAY: <strong style={{ color: '#D32F2F' }}>{currentColor}</strong>
+                </span>
+                {selectedColorway?.images && selectedColorway.images.length > 0 && (
+                  <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                    {selectedColorway.images.length} photos
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {product.colors.map((c) => {
+                  const isSelected = c.name.toLowerCase() === currentColor.toLowerCase();
+                  return (
+                    <button
+                      key={c.name}
+                      onClick={() => {
+                        setSelectedColor(c.name);
+                        setActiveImageIdx(0);
+                        const cw = product.colorVariants?.find((item) => item.color.toLowerCase() === c.name.toLowerCase());
+                        if (cw && cw.sizes.length > 0) {
+                          const hasStock = cw.sizes.find(s => (typeof s.stock === 'number' ? s.stock : Number(s.stock) || 0) > 0);
+                          setSelectedSize(hasStock ? hasStock.size : cw.sizes[0].size);
+                        }
+                        setQuantity(1);
+                      }}
+                      title={c.name}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: isSelected ? '2px solid #D32F2F' : '1px solid #CBD5E1',
+                        backgroundColor: isSelected ? '#FFEBEE' : '#FFFFFF',
+                        cursor: 'pointer',
+                        fontSize: '0.78rem',
+                        fontWeight: isSelected ? 700 : 500,
+                        color: isSelected ? '#D32F2F' : '#334155',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <span style={{
+                        width: '14px',
+                        height: '14px',
+                        borderRadius: '50%',
+                        backgroundColor: c.hex,
+                        border: '1px solid #CBD5E1',
+                        display: 'inline-block',
+                      }} />
+                      <span>{c.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Size Selector with Live Stock Display */}
             <div style={{ marginBottom: '18px' }}>
               <div style={{
                 display: 'flex',
@@ -287,7 +415,7 @@ export const QuickViewModal: React.FC = () => {
                 marginBottom: '8px',
               }}>
                 <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#0F172A' }}>
-                  SELECT SIZE (EU): <strong>{currentSize}</strong>
+                  SELECT SIZE (EU): <strong style={{ color: '#D32F2F' }}>{currentSize}</strong>
                 </span>
                 <button
                   onClick={() => setIsSizeGuideOpen(true)}
@@ -304,70 +432,60 @@ export const QuickViewModal: React.FC = () => {
                   }}
                 >
                   <Ruler size={13} />
-                  <span>Size Chart Guide</span>
+                  <span>Size Guide</span>
                 </button>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {product.sizes.map((sz) => (
-                  <button
-                    key={sz}
-                    onClick={() => setSelectedSize(sz)}
-                    style={{
-                      minWidth: '44px',
-                      height: '38px',
-                      padding: '0 10px',
-                      borderRadius: '8px',
-                      fontSize: '0.85rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      border: sz === currentSize ? '2px solid #D32F2F' : '1px solid #CBD5E1',
-                      backgroundColor: sz === currentSize ? '#FFEBEE' : '#FFFFFF',
-                      color: sz === currentSize ? '#D32F2F' : '#1E293B',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {sz}
-                  </button>
-                ))}
-              </div>
-            </div>
+                {availableSizes.map((sz) => {
+                  const stock = sizeStockMap[sz] ?? 0;
+                  const out = stock <= 0;
+                  const isSelected = sz === currentSize;
 
-            {/* Color Selector */}
-            <div style={{ marginBottom: '20px' }}>
-              <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#0F172A', display: 'block', marginBottom: '8px' }}>
-                COLOR: <strong>{currentColor}</strong>
-              </span>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {product.colors.map((c) => (
-                  <button
-                    key={c.name}
-                    onClick={() => setSelectedColor(c.name)}
-                    title={c.name}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '6px 12px',
-                      borderRadius: '8px',
-                      border: c.name === currentColor ? '2px solid #D32F2F' : '1px solid #E2E8F0',
-                      backgroundColor: c.name === currentColor ? '#FFEBEE' : '#FFFFFF',
-                      cursor: 'pointer',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                    }}
-                  >
-                    <span style={{
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      backgroundColor: c.hex,
-                      border: '1px solid #CBD5E1',
-                      display: 'inline-block',
-                    }} />
-                    <span>{c.name}</span>
-                  </button>
-                ))}
+                  return (
+                    <button
+                      key={sz}
+                      onClick={() => {
+                        setSelectedSize(sz);
+                        if (quantity > stock && stock > 0) {
+                          setQuantity(stock);
+                        }
+                      }}
+                      style={{
+                        minWidth: '52px',
+                        padding: '6px 10px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        border: isSelected ? '2px solid #D32F2F' : '1px solid #CBD5E1',
+                        backgroundColor: isSelected ? '#FFEBEE' : out ? '#F8FAFC' : '#FFFFFF',
+                        color: isSelected ? '#D32F2F' : out ? '#94A3B8' : '#1E293B',
+                        opacity: out ? 0.6 : 1,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <span style={{
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        textDecoration: out ? 'line-through' : 'none',
+                      }}>
+                        {sz}
+                      </span>
+                      <span style={{
+                        fontSize: '0.625rem',
+                        fontWeight: 600,
+                        color: out ? '#EF4444' : stock <= 5 ? '#D97706' : '#16A34A',
+                        marginTop: '2px',
+                        lineHeight: 1,
+                      }}>
+                        {out ? '0 left' : `${stock} left`}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -376,7 +494,7 @@ export const QuickViewModal: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              marginBottom: '24px',
+              marginBottom: '20px',
               flexWrap: 'wrap',
             }}>
               {/* Stepper */}
@@ -386,17 +504,20 @@ export const QuickViewModal: React.FC = () => {
                 border: '1.5px solid #CBD5E1',
                 borderRadius: '8px',
                 overflow: 'hidden',
+                opacity: isOutOfStock ? 0.5 : 1,
               }}>
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  disabled={isOutOfStock || quantity <= 1}
                   style={{
                     width: '38px',
                     height: '42px',
                     border: 'none',
                     background: '#F8FAFC',
-                    cursor: 'pointer',
+                    cursor: isOutOfStock || quantity <= 1 ? 'not-allowed' : 'pointer',
                     fontSize: '1.1rem',
                     fontWeight: 700,
+                    color: '#334155',
                   }}
                 >
                   -
@@ -406,19 +527,26 @@ export const QuickViewModal: React.FC = () => {
                   textAlign: 'center',
                   fontWeight: 800,
                   fontSize: '0.95rem',
+                  color: '#0F172A',
                 }}>
-                  {quantity}
+                  {isOutOfStock ? 0 : quantity}
                 </span>
                 <button
-                  onClick={() => setQuantity(quantity + 1)}
+                  onClick={() => {
+                    if (quantity < currentAvailableStock) {
+                      setQuantity(quantity + 1);
+                    }
+                  }}
+                  disabled={isOutOfStock || quantity >= currentAvailableStock}
                   style={{
                     width: '38px',
                     height: '42px',
                     border: 'none',
                     background: '#F8FAFC',
-                    cursor: 'pointer',
+                    cursor: isOutOfStock || quantity >= currentAvailableStock ? 'not-allowed' : 'pointer',
                     fontSize: '1.1rem',
                     fontWeight: 700,
+                    color: '#334155',
                   }}
                 >
                   +
@@ -426,48 +554,53 @@ export const QuickViewModal: React.FC = () => {
               </div>
 
               {/* Buy Now & Add to Bag Buttons */}
-              <div style={{ display: 'flex', gap: '10px', flex: 1, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '10px', flex: 1, minWidth: '220px' }}>
                 <button
                   onClick={handleBuyNow}
+                  disabled={isOutOfStock}
                   className="btn"
                   style={{
                     flex: 1,
-                    minWidth: '130px',
-                    padding: '12px 18px',
-                    backgroundColor: '#0F172A',
+                    minWidth: '110px',
+                    padding: '12px 14px',
+                    backgroundColor: isOutOfStock ? '#94A3B8' : '#0F172A',
                     color: '#FFFFFF',
                     border: 'none',
                     borderRadius: '8px',
                     fontWeight: 700,
-                    fontSize: '0.9rem',
-                    cursor: 'pointer',
+                    fontSize: '0.88rem',
+                    cursor: isOutOfStock ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '6px',
+                    opacity: isOutOfStock ? 0.6 : 1,
                   }}
                 >
-                  Buy Now
+                  {isOutOfStock ? 'Sold Out' : 'Buy Now'}
                 </button>
 
                 <button
                   onClick={handleAddToCart}
+                  disabled={isOutOfStock}
                   className="btn btn-primary"
                   style={{
-                    flex: 1,
-                    minWidth: '140px',
-                    padding: '12px 18px',
+                    flex: 1.2,
+                    minWidth: '130px',
+                    padding: '12px 14px',
                     borderRadius: '8px',
                     fontWeight: 700,
-                    fontSize: '0.9rem',
+                    fontSize: '0.88rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '6px',
+                    opacity: isOutOfStock ? 0.6 : 1,
+                    cursor: isOutOfStock ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  <ShoppingBag size={18} />
-                  <span>Add to Bag</span>
+                  <ShoppingBag size={17} />
+                  <span>{isOutOfStock ? 'Out of Stock' : 'Add to Bag'}</span>
                 </button>
               </div>
 

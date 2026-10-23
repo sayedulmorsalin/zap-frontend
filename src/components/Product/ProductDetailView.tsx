@@ -54,14 +54,36 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   const product = initialProduct;
   const wishlisted = isWishlisted(product.id);
 
+  // Default color and size resolution
+  const defaultColor = product.colors?.[0]?.name || product.colorVariants?.[0]?.color || 'Classic Black';
+  const defaultColorway = product.colorVariants?.find(
+    (cv) => cv.color.toLowerCase() === defaultColor.toLowerCase()
+  );
+  const defaultSize = defaultColorway && defaultColorway.sizes.length > 0
+    ? (defaultColorway.sizes.find((s) => s.stock > 0)?.size || defaultColorway.sizes[0].size)
+    : (product.sizes?.[0] || '41');
+
   // States
   const [activeImageIdx, setActiveImageIdx] = useState(0);
-  const [selectedColor, setSelectedColor] = useState<string>(product.colors[0]?.name || 'Beige');
-  const [selectedSize, setSelectedSize] = useState<string>(product.sizes?.[0] || '41');
+  const [selectedColor, setSelectedColor] = useState<string>(defaultColor);
+  const [selectedSize, setSelectedSize] = useState<string>(defaultSize);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'description' | 'reviews' | 'sizeguide'>('description');
   const [showOptionsWarning, setShowOptionsWarning] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Sync state when product changes (e.g. navigation across related products)
+  useEffect(() => {
+    setActiveImageIdx(0);
+    const newColor = product.colors?.[0]?.name || product.colorVariants?.[0]?.color || 'Classic Black';
+    setSelectedColor(newColor);
+    const cw = product.colorVariants?.find((c) => c.color.toLowerCase() === newColor.toLowerCase());
+    const newSz = cw && cw.sizes.length > 0
+      ? (cw.sizes.find((s) => s.stock > 0)?.size || cw.sizes[0].size)
+      : (product.sizes?.[0] || '41');
+    setSelectedSize(newSz);
+    setQuantity(1);
+  }, [product.id]);
 
   // Reviews state
   const [reviewsList, setReviewsList] = useState(SAMPLE_REVIEWS);
@@ -73,30 +95,93 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   // Fallback related products if not provided
   const finalRelated = (relatedProducts.length > 0 ? relatedProducts : allProducts.filter(p => p.id !== product.id)).slice(0, 4);
 
+  // Resolve active colorway and its images & size stock
+  const selectedColorway = product.colorVariants?.find(
+    (cv) => cv.color.toLowerCase() === selectedColor.toLowerCase()
+  );
+
+  const activeImages = (selectedColorway && selectedColorway.images && selectedColorway.images.length > 0)
+    ? selectedColorway.images
+    : (product.images && product.images.length > 0
+      ? product.images
+      : ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80']);
+
+  // Build size -> stock map for selected color
+  const sizeStockMap: { [size: string]: number } = {};
+  if (selectedColorway && selectedColorway.sizes.length > 0) {
+    selectedColorway.sizes.forEach((s) => {
+      sizeStockMap[s.size] = typeof s.stock === 'number' ? s.stock : Number(s.stock) || 0;
+    });
+  } else if (product.variants && product.variants.length > 0) {
+    product.variants
+      .filter((v) => (v.color || '').toLowerCase() === selectedColor.toLowerCase())
+      .forEach((v) => {
+        sizeStockMap[v.size] = typeof v.stock === 'number' ? v.stock : Number(v.stock) || 0;
+      });
+  } else {
+    (product.sizes || ['39', '40', '41', '42', '43', '44']).forEach((sz) => {
+      sizeStockMap[sz] = 10;
+    });
+  }
+
+  // Sorted available sizes (e.g., 39, 40, 41, 42, 43, 44, 45)
+  const rawSizes = Object.keys(sizeStockMap).length > 0
+    ? Object.keys(sizeStockMap)
+    : (product.sizes || []);
+  const currentAvailableSizes = [...rawSizes].sort((a, b) => {
+    const numA = Number(a);
+    const numB = Number(b);
+    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+    return a.localeCompare(b);
+  });
+
+  const currentStock = sizeStockMap[selectedSize] ?? 0;
+  const isSelectedSizeOutOfStock = currentStock <= 0;
+
   // Color selection handling: update color and sync thumbnail
   const handleColorChange = (colorName: string) => {
     setSelectedColor(colorName);
     setShowOptionsWarning(false);
+    setActiveImageIdx(0);
 
-    // If color has mapped image, find index or switch
-    const mappedUrl = COLOR_IMAGE_MAP[colorName];
-    if (mappedUrl) {
-      const idx = product.images.findIndex(img => img === mappedUrl);
-      if (idx !== -1) {
-        setActiveImageIdx(idx);
+    // If the newly selected color has sizes, auto-select first in-stock size if current size is out of stock
+    const newColorway = product.colorVariants?.find(
+      (cv) => cv.color.toLowerCase() === colorName.toLowerCase()
+    );
+    let newSz = selectedSize;
+    if (newColorway && newColorway.sizes.length > 0) {
+      const match = newColorway.sizes.find((s) => s.size === selectedSize && s.stock > 0);
+      if (!match) {
+        const firstInStock = newColorway.sizes.find((s) => s.stock > 0) || newColorway.sizes[0];
+        if (firstInStock) {
+          newSz = firstInStock.size;
+          setSelectedSize(newSz);
+        }
       }
+    }
+    const targetStock = newColorway?.sizes?.find((s) => s.size === newSz)?.stock ?? 10;
+    if (targetStock > 0 && quantity > targetStock) {
+      setQuantity(targetStock);
     }
   };
 
   const handleSizeChange = (size: string) => {
     setSelectedSize(size);
     setShowOptionsWarning(false);
+    const newStock = sizeStockMap[size] ?? 0;
+    if (newStock > 0 && quantity > newStock) {
+      setQuantity(newStock);
+    }
   };
 
   const handleBuyNow = () => {
-    const sizeToUse = selectedSize || product.sizes?.[0] || '41';
+    const sizeToUse = selectedSize || currentAvailableSizes[0] || '41';
     if (!selectedSize) {
       setSelectedSize(sizeToUse);
+    }
+    if (isSelectedSizeOutOfStock) {
+      showToast(`Size ${sizeToUse} is currently out of stock in ${selectedColor}`);
+      return;
     }
     addToCart(product, sizeToUse, selectedColor, quantity);
     setIsCartOpen(false);
@@ -104,13 +189,17 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   };
 
   const handleAddToCart = () => {
-    const sizeToUse = selectedSize || product.sizes?.[0] || '41';
+    const sizeToUse = selectedSize || currentAvailableSizes[0] || '41';
     if (!selectedSize) {
       setSelectedSize(sizeToUse);
     }
+    if (isSelectedSizeOutOfStock) {
+      showToast(`Size ${sizeToUse} is currently out of stock in ${selectedColor}`);
+      return;
+    }
     addToCart(product, sizeToUse, selectedColor, quantity);
     setIsCartOpen(true);
-    showToast(`${product.name} (Size ${sizeToUse}) added to your bag!`);
+    showToast(`${product.name} (${selectedColor}, Size ${sizeToUse}) added to your bag!`);
   };
 
   const handleShare = () => {
@@ -147,6 +236,12 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
   // Color thumbnails helper
   const getColorThumbnail = (cName: string, fallbackIdx: number) => {
+    const cv = product.colorVariants?.find((c) => c.color.toLowerCase() === cName.toLowerCase());
+    if (cv && cv.images && cv.images.length > 0) return cv.images[0];
+
+    const cObj = product.colors.find((c) => c.name.toLowerCase() === cName.toLowerCase());
+    if (cObj && cObj.images && cObj.images.length > 0) return cObj.images[0];
+
     if (COLOR_IMAGE_MAP[cName]) return COLOR_IMAGE_MAP[cName];
     return product.images[fallbackIdx] || product.images[0];
   };
@@ -202,7 +297,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               width: '80px',
               flexShrink: 0,
             }} className="vertical-thumbnails">
-              {product.images.map((imgUrl, idx) => (
+              {activeImages.map((imgUrl, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveImageIdx(idx)}
@@ -252,7 +347,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
             }}>
               <Image
-                src={product.images[activeImageIdx] || product.images[0]}
+                src={activeImages[activeImageIdx] || activeImages[0] || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'}
                 alt={product.name}
                 width={700}
                 height={700}
@@ -267,7 +362,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               />
 
               {/* Bottom Right SKU Watermark/Badge (only when not embedded in image) */}
-              {!product.images[activeImageIdx]?.includes('SKU Images') && product.sku && (
+              {!activeImages[activeImageIdx]?.includes('SKU Images') && product.sku && (
                 <div style={{
                   position: 'absolute',
                   bottom: '16px',
@@ -484,36 +579,82 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
               {/* Size Buttons Row */}
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {product.sizes.map((s) => {
+                {currentAvailableSizes.map((s) => {
                   const isSelected = selectedSize === s;
+                  const szStock = sizeStockMap[s] ?? 0;
+                  const isSzOut = szStock <= 0;
+                  const isLow = szStock > 0 && szStock <= 5;
+
                   return (
                     <button
                       key={s}
                       onClick={() => handleSizeChange(s)}
                       style={{
-                        minWidth: '46px',
-                        height: '42px',
-                        padding: '0 14px',
-                        borderRadius: '4px',
-                        border: isSelected ? '2px solid #000000' : '1px solid #D1D5DB',
-                        backgroundColor: isSelected ? '#000000' : '#FFFFFF',
-                        color: isSelected ? '#FFFFFF' : '#111827',
+                        minWidth: '54px',
+                        height: '46px',
+                        padding: '2px 10px',
+                        borderRadius: '6px',
+                        border: isSelected
+                          ? '2px solid #000000'
+                          : isSzOut
+                          ? '1px dashed #CBD5E1'
+                          : '1px solid #D1D5DB',
+                        backgroundColor: isSelected
+                          ? '#000000'
+                          : isSzOut
+                          ? '#F8FAFC'
+                          : '#FFFFFF',
+                        color: isSelected
+                          ? '#FFFFFF'
+                          : isSzOut
+                          ? '#94A3B8'
+                          : '#111827',
                         fontWeight: isSelected ? 700 : 500,
-                        fontSize: '0.92rem',
+                        fontSize: '0.88rem',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        lineHeight: 1.1,
                       }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) e.currentTarget.style.borderColor = '#111827';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) e.currentTarget.style.borderColor = '#D1D5DB';
-                      }}
+                      title={isSzOut ? `Size ${s} is out of stock in ${selectedColor}` : `Size ${s}: ${szStock} pairs available in ${selectedColor}`}
                     >
-                      {s}
+                      <span style={{ textDecoration: isSzOut ? 'line-through' : 'none' }}>
+                        {s}
+                      </span>
+                      <span style={{
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        color: isSelected ? '#A7F3D0' : isSzOut ? '#EF4444' : isLow ? '#D97706' : '#64748B',
+                        marginTop: '2px',
+                      }}>
+                        {isSzOut ? '0 left' : isLow ? `${szStock} left` : `${szStock} left`}
+                      </span>
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Stock Status Guidance */}
+              <div style={{ marginTop: '10px', fontSize: '0.82rem' }}>
+                {isSelectedSizeOutOfStock ? (
+                  <span style={{ color: '#DC2626', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <span>⚠️</span>
+                    <span>Size {selectedSize} is currently out of stock in {selectedColor}.</span>
+                  </span>
+                ) : currentStock <= 5 ? (
+                  <span style={{ color: '#D97706', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <span>⚡</span>
+                    <span>Limited Stock: Only {currentStock} shoes left in Size {selectedSize} ({selectedColor})!</span>
+                  </span>
+                ) : (
+                  <span style={{ color: '#15803D', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Check size={14} color="#15803D" />
+                    <span>In Stock ({currentStock} available in Size {selectedSize})</span>
+                  </span>
+                )}
               </div>
             </div>
 
@@ -528,19 +669,20 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                 border: '1px solid #D1D5DB',
                 borderRadius: '4px',
                 overflow: 'hidden',
-                backgroundColor: '#FFFFFF',
+                backgroundColor: isSelectedSizeOutOfStock ? '#F1F5F9' : '#FFFFFF',
               }}>
                 <button
+                  disabled={isSelectedSizeOutOfStock || quantity <= 1}
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   style={{
                     width: '38px',
                     height: '38px',
                     border: 'none',
                     background: 'none',
-                    cursor: 'pointer',
+                    cursor: isSelectedSizeOutOfStock || quantity <= 1 ? 'not-allowed' : 'pointer',
                     fontSize: '1.1rem',
                     fontWeight: 600,
-                    color: '#4B5563',
+                    color: isSelectedSizeOutOfStock || quantity <= 1 ? '#CBD5E1' : '#4B5563',
                   }}
                   aria-label="Decrease quantity"
                 >
@@ -551,21 +693,22 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   textAlign: 'center',
                   fontSize: '0.95rem',
                   fontWeight: 600,
-                  color: '#111827',
+                  color: isSelectedSizeOutOfStock ? '#94A3B8' : '#111827',
                 }}>
-                  {quantity}
+                  {isSelectedSizeOutOfStock ? 0 : quantity}
                 </div>
                 <button
-                  onClick={() => setQuantity(quantity + 1)}
+                  disabled={isSelectedSizeOutOfStock || (currentStock > 0 && quantity >= currentStock)}
+                  onClick={() => setQuantity(Math.min(Math.max(1, currentStock), quantity + 1))}
                   style={{
                     width: '38px',
                     height: '38px',
                     border: 'none',
                     background: 'none',
-                    cursor: 'pointer',
+                    cursor: isSelectedSizeOutOfStock || (currentStock > 0 && quantity >= currentStock) ? 'not-allowed' : 'pointer',
                     fontSize: '1.1rem',
                     fontWeight: 600,
-                    color: '#4B5563',
+                    color: isSelectedSizeOutOfStock || (currentStock > 0 && quantity >= currentStock) ? '#CBD5E1' : '#4B5563',
                   }}
                   aria-label="Increase quantity"
                 >
@@ -589,52 +732,62 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
             {/* Action Buttons: Buy Now & Add to Cart */}
             <div className="product-action-buttons" style={{ display: 'flex', gap: '12px', marginTop: '4px', flexWrap: 'wrap' }}>
               <button
+                disabled={isSelectedSizeOutOfStock}
                 onClick={handleBuyNow}
                 style={{
                   flex: 1,
                   minWidth: '140px',
-                  backgroundColor: '#000000',
-                  color: '#FFFFFF',
+                  backgroundColor: isSelectedSizeOutOfStock ? '#E2E8F0' : '#000000',
+                  color: isSelectedSizeOutOfStock ? '#94A3B8' : '#FFFFFF',
                   border: 'none',
                   borderRadius: '4px',
                   padding: '13px 28px',
                   fontSize: '0.95rem',
                   fontWeight: 700,
                   letterSpacing: '0.02em',
-                  cursor: 'pointer',
+                  cursor: isSelectedSizeOutOfStock ? 'not-allowed' : 'pointer',
                   transition: 'background 0.15s ease',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#27272A')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#000000')}
+                onMouseEnter={(e) => {
+                  if (!isSelectedSizeOutOfStock) e.currentTarget.style.backgroundColor = '#27272A';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelectedSizeOutOfStock) e.currentTarget.style.backgroundColor = '#000000';
+                }}
               >
-                Buy Now
+                {isSelectedSizeOutOfStock ? 'Out of Stock' : 'Buy Now'}
               </button>
 
               <button
+                disabled={isSelectedSizeOutOfStock}
                 onClick={handleAddToCart}
                 style={{
                   flex: 1,
                   minWidth: '160px',
-                  backgroundColor: '#FFFFFF',
-                  color: '#111827',
-                  border: '1px solid #D1D5DB',
+                  backgroundColor: isSelectedSizeOutOfStock ? '#F8FAFC' : '#FFFFFF',
+                  color: isSelectedSizeOutOfStock ? '#94A3B8' : '#111827',
+                  border: isSelectedSizeOutOfStock ? '1px solid #E2E8F0' : '1px solid #D1D5DB',
                   borderRadius: '4px',
                   padding: '13px 28px',
                   fontSize: '0.95rem',
                   fontWeight: 600,
-                  cursor: 'pointer',
+                  cursor: isSelectedSizeOutOfStock ? 'not-allowed' : 'pointer',
                   transition: 'all 0.15s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F9FAFB';
-                  e.currentTarget.style.borderColor = '#9CA3AF';
+                  if (!isSelectedSizeOutOfStock) {
+                    e.currentTarget.style.backgroundColor = '#F9FAFB';
+                    e.currentTarget.style.borderColor = '#9CA3AF';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  e.currentTarget.style.borderColor = '#D1D5DB';
+                  if (!isSelectedSizeOutOfStock) {
+                    e.currentTarget.style.backgroundColor = '#FFFFFF';
+                    e.currentTarget.style.borderColor = '#D1D5DB';
+                  }
                 }}
               >
-                Add to Bag
+                {isSelectedSizeOutOfStock ? 'Out of Stock' : 'Add to Bag'}
               </button>
             </div>
 
@@ -1139,34 +1292,38 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
         </div>
         <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
           <button
+            disabled={isSelectedSizeOutOfStock}
             onClick={handleAddToCart}
             style={{
-              backgroundColor: '#FFFFFF',
-              color: '#111827',
-              border: '1.5px solid #D1D5DB',
+              backgroundColor: isSelectedSizeOutOfStock ? '#F8FAFC' : '#FFFFFF',
+              color: isSelectedSizeOutOfStock ? '#94A3B8' : '#111827',
+              border: isSelectedSizeOutOfStock ? '1.5px solid #E2E8F0' : '1.5px solid #D1D5DB',
               borderRadius: '6px',
               padding: '8px 12px',
               fontSize: '0.75rem',
               fontWeight: 700,
-              cursor: 'pointer',
+              cursor: isSelectedSizeOutOfStock ? 'not-allowed' : 'pointer',
+              opacity: isSelectedSizeOutOfStock ? 0.6 : 1,
             }}
           >
-            Add to Bag
+            {isSelectedSizeOutOfStock ? 'Sold Out' : 'Add to Bag'}
           </button>
           <button
+            disabled={isSelectedSizeOutOfStock}
             onClick={handleBuyNow}
             style={{
-              backgroundColor: '#000000',
+              backgroundColor: isSelectedSizeOutOfStock ? '#94A3B8' : '#000000',
               color: '#FFFFFF',
               border: 'none',
               borderRadius: '6px',
               padding: '8px 16px',
               fontSize: '0.75rem',
               fontWeight: 700,
-              cursor: 'pointer',
+              cursor: isSelectedSizeOutOfStock ? 'not-allowed' : 'pointer',
+              opacity: isSelectedSizeOutOfStock ? 0.6 : 1,
             }}
           >
-            Buy Now
+            {isSelectedSizeOutOfStock ? 'Sold Out' : 'Buy Now'}
           </button>
         </div>
       </div>

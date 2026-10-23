@@ -190,7 +190,24 @@ export const CartDrawer: React.FC = () => {
               </button>
             </div>
           ) : (
-            cart.map((item) => (
+            cart.map((item) => {
+              const itemColorway = item.product.colorVariants?.find(
+                (cv) => cv.color.toLowerCase() === item.selectedColor.toLowerCase()
+              );
+              const itemImage = itemColorway?.images?.[0] || item.product.images[0];
+
+              let maxStock = 99;
+              if (itemColorway && itemColorway.sizes.length > 0) {
+                const szObj = itemColorway.sizes.find((s) => s.size === item.selectedSize);
+                if (szObj) maxStock = typeof szObj.stock === 'number' ? szObj.stock : Number(szObj.stock) || 0;
+              } else if (item.product.variants && item.product.variants.length > 0) {
+                const vObj = item.product.variants.find(
+                  (v) => (v.color || '').toLowerCase() === item.selectedColor.toLowerCase() && v.size === item.selectedSize
+                );
+                if (vObj) maxStock = typeof vObj.stock === 'number' ? vObj.stock : Number(vObj.stock) || 0;
+              }
+
+              return (
               <div
                 key={item.id}
                 style={{
@@ -214,8 +231,8 @@ export const CartDrawer: React.FC = () => {
                   justifyContent: 'center',
                 }}>
                   <Image
-                    src={item.product.images[0]}
-                    alt={item.product.name}
+                    src={itemImage}
+                    alt={`${item.product.name} - ${item.selectedColor}`}
                     width={72}
                     height={72}
                     unoptimized
@@ -310,16 +327,23 @@ export const CartDrawer: React.FC = () => {
                         {item.quantity}
                       </span>
                       <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        onClick={() => {
+                          if (item.quantity < maxStock) {
+                            updateQuantity(item.id, item.quantity + 1);
+                          }
+                        }}
+                        disabled={item.quantity >= maxStock}
                         style={{
                           width: '26px',
                           height: '26px',
                           border: 'none',
                           background: '#F8FAFC',
-                          cursor: 'pointer',
+                          cursor: item.quantity >= maxStock ? 'not-allowed' : 'pointer',
                           fontWeight: 700,
                           fontSize: '0.9rem',
+                          opacity: item.quantity >= maxStock ? 0.4 : 1,
                         }}
+                        title={item.quantity >= maxStock ? `Maximum stock reached (${maxStock} pairs available)` : undefined}
                       >
                         +
                       </button>
@@ -338,8 +362,9 @@ export const CartDrawer: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ))
-          )}
+            );
+          })
+        )}
         </div>
 
         {/* Footer Summary (if items present) */}

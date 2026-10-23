@@ -863,13 +863,21 @@ export default function CheckoutPage() {
                             flexShrink: 0,
                             border: '1px solid #E2E8F0',
                           }}>
-                            <Image
-                              src={item.product.images[0]}
-                              alt={item.product.name}
-                              fill
-                              unoptimized
-                              style={{ objectFit: 'contain', padding: '4px' }}
-                            />
+                            {(() => {
+                              const itemColorway = item.product.colorVariants?.find(
+                                (cv) => cv.color.toLowerCase() === item.selectedColor.toLowerCase()
+                              );
+                              const itemImage = itemColorway?.images?.[0] || item.product.images[0];
+                              return (
+                                <Image
+                                  src={itemImage}
+                                  alt={`${item.product.name} - ${item.selectedColor}`}
+                                  fill
+                                  unoptimized
+                                  style={{ objectFit: 'contain', padding: '4px' }}
+                                />
+                              );
+                            })()}
                           </div>
 
                           {/* Info */}

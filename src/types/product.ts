@@ -12,11 +12,22 @@ export type ShoeCategory =
   | 'bags';
 
 export interface ProductVariant {
-  id: string;
+  id?: string;
   size: string;
   color: string;
-  colorHex: string;
+  colorHex?: string;
   stock: number;
+  additionalPrice?: number;
+}
+
+export interface ColorVariantGroup {
+  color: string;
+  colorHex: string;
+  images: string[];
+  sizes: Array<{
+    size: string;
+    stock: number;
+  }>;
 }
 
 export interface Product {
@@ -41,8 +52,10 @@ export interface Product {
   features: string[];
   images: string[];
   sizes: string[];
-  colors: { name: string; hex: string }[];
+  colors: { name: string; hex: string; images?: string[] }[];
   inStock: boolean;
+  variants?: ProductVariant[];
+  colorVariants?: ColorVariantGroup[];
 }
 
 export interface CartItem {

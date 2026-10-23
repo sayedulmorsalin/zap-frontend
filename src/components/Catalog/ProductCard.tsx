@@ -19,8 +19,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const wishlisted = isWishlisted(product.id);
-  const primaryImg = product.images?.[0] || '/images/shoe-leather-formal.jpg';
-  const secondaryImg = product.images?.[1] || primaryImg;
+
+  // Resolve active colorway for image & stock preview
+  const selectedColorway = product.colorVariants?.find(
+    (cv) => cv.color.toLowerCase() === selectedColor.toLowerCase()
+  );
+
+  const primaryImg = selectedColorway?.images?.[0] || product.images?.[0] || '/images/shoe-leather-formal.jpg';
+  const secondaryImg = selectedColorway?.images?.[1] || product.images?.[1] || primaryImg;
+
+  // Determine stock for current selected color & size
+  let currentStock = 10;
+  if (selectedColorway && selectedColorway.sizes.length > 0) {
+    const sObj = selectedColorway.sizes.find((s) => s.size === selectedSize);
+    currentStock = sObj ? (typeof sObj.stock === 'number' ? sObj.stock : Number(sObj.stock) || 0) : 0;
+  } else if (product.variants && product.variants.length > 0) {
+    const vObj = product.variants.find(
+      (v) => (v.color || '').toLowerCase() === selectedColor.toLowerCase() && v.size === selectedSize
+    );
+    currentStock = vObj ? (typeof vObj.stock === 'number' ? vObj.stock : Number(vObj.stock) || 0) : 0;
+  } else if (product.inStock === false) {
+    currentStock = 0;
+  }
+  const isOutOfStock = currentStock <= 0 || product.inStock === false;
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Navigate to product page if didn't click button
@@ -32,6 +53,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   const handleBuyNow = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isOutOfStock) return;
     addToCart(product, selectedSize, selectedColor, 1);
     setIsCartOpen(false);
     router.push('/checkout');
@@ -110,7 +132,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         />
       </button>
 
-      {/* Shoe Image Area with Dual Angle Hover */}
+      {/* Shoe Image Area with Dual Angle Hover & Color Swatch Sync */}
       <div style={{
         position: 'relative',
         width: '100%',
@@ -254,8 +276,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <span className="product-card-sizes-label" style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>
               SIZE (EU):
             </span>
-            <span style={{ fontSize: '0.7rem', color: '#0F172A', fontWeight: 800 }}>
-              {selectedSize}
+            <span style={{ fontSize: '0.7rem', color: isOutOfStock ? '#DC2626' : '#0F172A', fontWeight: 800 }}>
+              {selectedSize} {isOutOfStock ? '(Sold Out)' : `(${currentStock} left)`}
             </span>
           </div>
           <div className="product-card-sizes-chips" style={{
@@ -263,33 +285,44 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             gap: '6px',
             flexWrap: 'wrap',
           }}>
-            {product.sizes.slice(0, 5).map((sz) => (
-              <button
-                key={sz}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedSize(sz);
-                }}
-                className="product-card-size-btn"
-                style={{
-                  width: '28px',
-                  height: '26px',
-                  borderRadius: '4px',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  border: sz === selectedSize ? '1.5px solid #D32F2F' : '1px solid #E2E8F0',
-                  backgroundColor: sz === selectedSize ? '#FFEBEE' : '#FFFFFF',
-                  color: sz === selectedSize ? '#D32F2F' : '#334155',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {sz}
-              </button>
-            ))}
+            {product.sizes.slice(0, 5).map((sz) => {
+              let szStock = 10;
+              if (selectedColorway && selectedColorway.sizes.length > 0) {
+                const sObj = selectedColorway.sizes.find((s) => s.size === sz);
+                szStock = sObj ? (typeof sObj.stock === 'number' ? sObj.stock : Number(sObj.stock) || 0) : 0;
+              }
+              const isSzOut = szStock <= 0;
+              return (
+                <button
+                  key={sz}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedSize(sz);
+                  }}
+                  className="product-card-size-btn"
+                  style={{
+                    width: '32px',
+                    height: '26px',
+                    borderRadius: '4px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    border: sz === selectedSize ? '1.5px solid #D32F2F' : '1px solid #E2E8F0',
+                    backgroundColor: sz === selectedSize ? '#FFEBEE' : isSzOut ? '#F1F5F9' : '#FFFFFF',
+                    color: sz === selectedSize ? '#D32F2F' : isSzOut ? '#94A3B8' : '#334155',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textDecoration: isSzOut ? 'line-through' : 'none',
+                    opacity: isSzOut ? 0.6 : 1,
+                    transition: 'all 0.15s ease',
+                  }}
+                  title={isSzOut ? `Size ${sz} is out of stock` : `Size ${sz} (${szStock} in stock)`}
+                >
+                  {sz}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -304,6 +337,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedColor(c.name);
+                    const cw = product.colorVariants?.find((item) => item.color.toLowerCase() === c.name.toLowerCase());
+                    if (cw && cw.sizes.length > 0) {
+                      const hasStock = cw.sizes.find((s) => (typeof s.stock === 'number' ? s.stock : Number(s.stock) || 0) > 0);
+                      if (hasStock) {
+                        setSelectedSize(hasStock.size);
+                      }
+                    }
                   }}
                   title={c.name}
                   className="product-card-color-dot"
@@ -312,10 +352,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                     height: '16px',
                     borderRadius: '50%',
                     backgroundColor: c.hex,
-                    border: c.name === selectedColor ? '2px solid #D32F2F' : '1px solid #CBD5E1',
+                    border: c.name.toLowerCase() === selectedColor.toLowerCase() ? '2px solid #D32F2F' : '1px solid #CBD5E1',
                     padding: 0,
                     cursor: 'pointer',
-                    boxShadow: c.name === selectedColor ? '0 0 0 1px #D32F2F' : 'none',
+                    boxShadow: c.name.toLowerCase() === selectedColor.toLowerCase() ? '0 0 0 1px #D32F2F' : 'none',
                   }}
                 />
               ))}
@@ -372,6 +412,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <button
             type="button"
             onClick={handleBuyNow}
+            disabled={isOutOfStock}
             className="product-card-btn product-card-buy-btn"
             style={{
               padding: '9px 10px',
@@ -379,26 +420,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               fontWeight: 700,
               borderRadius: '8px',
               border: '1.5px solid #0F172A',
-              backgroundColor: '#0F172A',
+              backgroundColor: isOutOfStock ? '#94A3B8' : '#0F172A',
               color: '#FFFFFF',
-              cursor: 'pointer',
+              cursor: isOutOfStock ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '4px',
               transition: 'all 0.15s ease',
               whiteSpace: 'nowrap',
+              opacity: isOutOfStock ? 0.6 : 1,
             }}
           >
-            <span>Buy Now</span>
+            <span>{isOutOfStock ? 'Sold Out' : 'Buy Now'}</span>
           </button>
 
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              if (isOutOfStock) return;
               addToCart(product, selectedSize, selectedColor, 1);
             }}
+            disabled={isOutOfStock}
             className="btn btn-primary product-card-btn product-card-bag-btn"
             style={{
               padding: '9px 10px',
@@ -409,12 +453,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '4px',
-              cursor: 'pointer',
+              cursor: isOutOfStock ? 'not-allowed' : 'pointer',
               whiteSpace: 'nowrap',
+              opacity: isOutOfStock ? 0.6 : 1,
             }}
           >
             <ShoppingBag size={14} />
-            <span>Add to Bag</span>
+            <span>{isOutOfStock ? 'Out of Stock' : 'Add to Bag'}</span>
           </button>
         </div>
       </div>

@@ -8,18 +8,48 @@ import {
   Edit3, 
   Trash2, 
   Star, 
-  X,
-  UploadCloud,
-  Image as ImageIcon,
-  ArrowUp,
-  ArrowDown,
-  Loader2,
-  Link2,
-  AlertCircle
+  X, 
+  UploadCloud, 
+  Image as ImageIcon, 
+  ArrowUp, 
+  ArrowDown, 
+  Loader2, 
+  Link2, 
+  AlertCircle,
+  Palette,
+  Minus,
+  Check,
+  Package,
+  Layers,
+  Sparkles
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
-import { Product, Gender, ShoeCategory } from '../../types/product';
+import { Product, Gender, ShoeCategory, ProductVariant, ColorVariantGroup } from '../../types/product';
 import { uploadApiFiles } from '../../services/api';
+
+export interface ColorwayItem {
+  id: string;
+  color: string;
+  colorHex: string;
+  images: string[];
+  sizes: Array<{
+    size: string;
+    stock: number;
+  }>;
+}
+
+export const PRESET_COLORS = [
+  { name: 'Classic Black', hex: '#09090B' },
+  { name: 'Arctic White', hex: '#FFFFFF' },
+  { name: 'Cognac Brown', hex: '#5D4037' },
+  { name: 'Beige / Tan', hex: '#D7CCC8' },
+  { name: 'Navy Blue', hex: '#1E3A8A' },
+  { name: 'Crimson Red', hex: '#DC2626' },
+  { name: 'Olive Green', hex: '#4D7C0F' },
+  { name: 'Slate Grey', hex: '#64748B' },
+];
+
+export const STANDARD_SHOE_SIZES = ['38', '39', '40', '41', '42', '43', '44', '45', '46'];
 
 export const ProductManager: React.FC = () => {
   const { products, addProduct, updateProduct, deleteProduct, brands } = useShop();
@@ -35,10 +65,14 @@ export const ProductManager: React.FC = () => {
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
   // SeaweedFS Upload State
-  const [isUploading, setIsUploading] = useState(false);
+  const [uploadingColorwayId, setUploadingColorwayId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [manualUrlInput, setManualUrlInput] = useState('');
-  const [showManualUrl, setShowManualUrl] = useState(false);
+  const [colorwayUrlInput, setColorwayUrlInput] = useState<{ [id: string]: string }>({});
+  const [showColorwayUrl, setShowColorwayUrl] = useState<{ [id: string]: boolean }>({});
+  const [customSizeInput, setCustomSizeInput] = useState<{ [id: string]: string }>({});
+
+  // Colorways State (with images & size-specific stock)
+  const [colorways, setColorways] = useState<ColorwayItem[]>([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -54,9 +88,6 @@ export const ProductManager: React.FC = () => {
     inStock: true,
     isFeatured: false,
     isNewArrival: true,
-    images: [] as string[],
-    sizesStr: '39, 40, 41, 42, 43, 44',
-    colorsStr: 'Black',
   });
 
   const filteredProducts = products.filter((p) => {
@@ -86,13 +117,27 @@ export const ProductManager: React.FC = () => {
       inStock: true,
       isFeatured: false,
       isNewArrival: true,
-      images: [],
-      sizesStr: '39, 40, 41, 42, 43, 44',
-      colorsStr: 'Black',
     });
+    setColorways([
+      {
+        id: `cw-${Date.now()}-1`,
+        color: 'Classic Black',
+        colorHex: '#09090B',
+        images: [],
+        sizes: [
+          { size: '39', stock: 10 },
+          { size: '40', stock: 10 },
+          { size: '41', stock: 10 },
+          { size: '42', stock: 10 },
+          { size: '43', stock: 10 },
+          { size: '44', stock: 5 },
+        ],
+      },
+    ]);
     setUploadError(null);
-    setManualUrlInput('');
-    setShowManualUrl(false);
+    setColorwayUrlInput({});
+    setShowColorwayUrl({});
+    setCustomSizeInput({});
     setIsAddOpen(true);
   };
 
@@ -111,20 +156,168 @@ export const ProductManager: React.FC = () => {
       inStock: product.inStock,
       isFeatured: !!product.isFeatured,
       isNewArrival: !!product.isNewArrival,
-      images: product.images && product.images.length > 0 ? [...product.images] : ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'],
-      sizesStr: product.sizes.join(', '),
-      colorsStr: product.colors.map(c => c.name).join(', '),
     });
+
+    if (product.colorVariants && product.colorVariants.length > 0) {
+      setColorways(
+        product.colorVariants.map((cv, idx) => ({
+          id: `cw-${idx + 1}-${Date.now()}`,
+          color: cv.color || 'Standard',
+          colorHex: cv.colorHex || '#09090B',
+          images: cv.images || [],
+          sizes: cv.sizes.map((s) => ({ size: String(s.size), stock: Number(s.stock) || 0 })),
+        }))
+      );
+    } else if (product.variants && product.variants.length > 0) {
+      const grouped: { [col: string]: { colorHex: string; sizes: { size: string; stock: number }[] } } = {};
+      product.variants.forEach((v) => {
+        const col = v.color || 'Classic Black';
+        if (!grouped[col]) {
+          grouped[col] = { colorHex: v.colorHex || '#09090B', sizes: [] };
+        }
+        if (!grouped[col].sizes.some((s) => s.size === v.size)) {
+          grouped[col].sizes.push({ size: v.size, stock: v.stock });
+        }
+      });
+      const entries = Object.entries(grouped);
+      setColorways(
+        entries.map(([col, data], idx) => {
+          const matchedImages = product.images.filter((img) =>
+            img.toLowerCase().includes(col.toLowerCase())
+          );
+          return {
+            id: `cw-${idx + 1}-${Date.now()}`,
+            color: col,
+            colorHex: data.colorHex,
+            images: matchedImages.length > 0 ? matchedImages : (entries.length === 1 ? product.images : []),
+            sizes: data.sizes,
+          };
+        })
+      );
+    } else {
+      const cols = product.colors && product.colors.length > 0
+        ? product.colors
+        : [{ name: 'Classic Black', hex: '#09090B' }];
+      const szs = product.sizes && product.sizes.length > 0
+        ? product.sizes
+        : ['39', '40', '41', '42', '43', '44'];
+      setColorways(
+        cols.map((c, idx) => ({
+          id: `cw-${idx + 1}-${Date.now()}`,
+          color: c.name,
+          colorHex: c.hex,
+          images: idx === 0 ? product.images : (c.images || []),
+          sizes: szs.map((sz) => ({ size: sz, stock: 10 })),
+        }))
+      );
+    }
+
     setUploadError(null);
-    setManualUrlInput('');
-    setShowManualUrl(false);
+    setColorwayUrlInput({});
+    setShowColorwayUrl({});
+    setCustomSizeInput({});
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Colorway handlers
+  const handleAddColorway = () => {
+    const lastCw = colorways[colorways.length - 1];
+    const defaultSizes = lastCw
+      ? lastCw.sizes.map((s) => ({ size: s.size, stock: 10 }))
+      : [
+          { size: '39', stock: 10 },
+          { size: '40', stock: 10 },
+          { size: '41', stock: 10 },
+          { size: '42', stock: 10 },
+          { size: '43', stock: 10 },
+          { size: '44', stock: 5 },
+        ];
+
+    const nextColorIndex = colorways.length;
+    const preset = PRESET_COLORS[nextColorIndex % PRESET_COLORS.length];
+
+    setColorways((prev) => [
+      ...prev,
+      {
+        id: `cw-${Date.now()}-${prev.length + 1}`,
+        color: preset.name,
+        colorHex: preset.hex,
+        images: [],
+        sizes: defaultSizes,
+      },
+    ]);
+  };
+
+  const handleRemoveColorway = (id: string) => {
+    if (colorways.length <= 1) return;
+    setColorways((prev) => prev.filter((cw) => cw.id !== id));
+  };
+
+  const handleUpdateColorway = (id: string, updates: Partial<ColorwayItem>) => {
+    setColorways((prev) =>
+      prev.map((cw) => (cw.id === id ? { ...cw, ...updates } : cw))
+    );
+  };
+
+  const handleUpdateSizeStock = (colorwayId: string, sizeName: string, stock: number) => {
+    const validStock = Math.max(0, isNaN(stock) ? 0 : Math.round(stock));
+    setColorways((prev) =>
+      prev.map((cw) =>
+        cw.id === colorwayId
+          ? {
+              ...cw,
+              sizes: cw.sizes.map((s) => (s.size === sizeName ? { ...s, stock: validStock } : s)),
+            }
+          : cw
+      )
+    );
+  };
+
+  const handleAddSizeToColorway = (colorwayId: string, sizeName: string, defaultStock: number = 10) => {
+    const trimmed = sizeName.trim();
+    if (!trimmed) return;
+    setColorways((prev) =>
+      prev.map((cw) => {
+        if (cw.id !== colorwayId) return cw;
+        if (cw.sizes.some((s) => s.size === trimmed)) return cw;
+        return {
+          ...cw,
+          sizes: [...cw.sizes, { size: trimmed, stock: defaultStock }],
+        };
+      })
+    );
+  };
+
+  const handleRemoveSizeFromColorway = (colorwayId: string, sizeName: string) => {
+    setColorways((prev) =>
+      prev.map((cw) =>
+        cw.id === colorwayId
+          ? {
+              ...cw,
+              sizes: cw.sizes.filter((s) => s.size !== sizeName),
+            }
+          : cw
+      )
+    );
+  };
+
+  const handleBulkSetStock = (colorwayId: string, stock: number) => {
+    setColorways((prev) =>
+      prev.map((cw) =>
+        cw.id === colorwayId
+          ? {
+              ...cw,
+              sizes: cw.sizes.map((s) => ({ ...s, stock })),
+            }
+          : cw
+      )
+    );
+  };
+
+  const handleColorwayFileUpload = async (colorwayId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
 
-    setIsUploading(true);
+    setUploadingColorwayId(colorwayId);
     setUploadError(null);
 
     const filesArray = Array.from(fileList);
@@ -132,91 +325,110 @@ export const ProductManager: React.FC = () => {
       const res = await uploadApiFiles(filesArray, 'PRODUCT');
       if (res.success && res.data && res.data.length > 0) {
         const newUrls = res.data.map((item) => item.url);
-        setFormData((prev) => {
-          // If previous images only had the generic default placeholder, replace it with newly uploaded images
-          const isOnlyPlaceholder =
-            prev.images.length === 1 &&
-            prev.images[0].includes('unsplash.com/photo-1549298916');
-          return {
-            ...prev,
-            images: isOnlyPlaceholder ? newUrls : [...prev.images, ...newUrls],
-          };
-        });
+        setColorways((prev) =>
+          prev.map((cw) =>
+            cw.id === colorwayId
+              ? { ...cw, images: [...cw.images, ...newUrls] }
+              : cw
+          )
+        );
       } else {
         setUploadError(res.message || 'Upload to SeaweedFS failed.');
       }
     } catch (err: unknown) {
       setUploadError(err instanceof Error ? err.message : 'Network error during file upload');
     } finally {
-      setIsUploading(false);
+      setUploadingColorwayId(null);
       e.target.value = '';
     }
   };
 
-  const handleSetPrimary = (index: number) => {
-    if (index === 0) return;
-    setFormData((prev) => {
-      const updated = [...prev.images];
-      const [selected] = updated.splice(index, 1);
-      updated.unshift(selected);
-      return { ...prev, images: updated };
-    });
+  const handleSetColorwayPrimaryImage = (colorwayId: string, imgIdx: number) => {
+    if (imgIdx === 0) return;
+    setColorways((prev) =>
+      prev.map((cw) => {
+        if (cw.id !== colorwayId) return cw;
+        const updated = [...cw.images];
+        const [picked] = updated.splice(imgIdx, 1);
+        updated.unshift(picked);
+        return { ...cw, images: updated };
+      })
+    );
   };
 
-  const handleRemoveImage = (index: number) => {
-    setFormData((prev) => {
-      const updated = prev.images.filter((_, idx) => idx !== index);
-      return {
-        ...prev,
-        images: updated.length > 0 ? updated : ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'],
-      };
-    });
+  const handleRemoveColorwayImage = (colorwayId: string, imgIdx: number) => {
+    setColorways((prev) =>
+      prev.map((cw) =>
+        cw.id === colorwayId
+          ? { ...cw, images: cw.images.filter((_, idx) => idx !== imgIdx) }
+          : cw
+      )
+    );
   };
 
-  const handleMoveImage = (index: number, direction: 'up' | 'down') => {
-    setFormData((prev) => {
-      const updated = [...prev.images];
-      const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= updated.length) return prev;
-      const temp = updated[index];
-      updated[index] = updated[targetIndex];
-      updated[targetIndex] = temp;
-      return { ...prev, images: updated };
-    });
-  };
-
-  const handleAddManualUrl = () => {
-    const trimmed = manualUrlInput.trim();
-    if (!trimmed) return;
-    setFormData((prev) => {
-      const isOnlyPlaceholder =
-        prev.images.length === 1 &&
-        prev.images[0].includes('unsplash.com/photo-1549298916');
-      return {
-        ...prev,
-        images: isOnlyPlaceholder ? [trimmed] : [...prev.images, trimmed],
-      };
-    });
-    setManualUrlInput('');
+  const handleAddColorwayManualUrl = (colorwayId: string) => {
+    const val = (colorwayUrlInput[colorwayId] || '').trim();
+    if (!val) return;
+    setColorways((prev) =>
+      prev.map((cw) =>
+        cw.id === colorwayId
+          ? { ...cw, images: [...cw.images, val] }
+          : cw
+      )
+    );
+    setColorwayUrlInput((prev) => ({ ...prev, [colorwayId]: '' }));
   };
 
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const sizes = formData.sizesStr.split(',').map((s) => s.trim()).filter(Boolean);
-    const colors = formData.colorsStr.split(',').map((c) => ({
-      name: c.trim(),
-      hex: c.toLowerCase().includes('black') ? '#09090B' : c.toLowerCase().includes('brown') ? '#451A03' : '#64748B',
-    })).filter((c) => c.name);
+    // Flatten all images across colorways
+    const allImages = colorways.flatMap((cw) => cw.images).filter(Boolean);
+    const finalImages = allImages.length > 0
+      ? Array.from(new Set(allImages))
+      : ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'];
+
+    // Construct colors
+    const finalColors = colorways.map((cw) => ({
+      name: cw.color.trim() || 'Classic Black',
+      hex: cw.colorHex || '#09090B',
+      images: cw.images,
+    }));
+
+    // Construct distinct sizes
+    const distinctSizes = Array.from(
+      new Set(colorways.flatMap((cw) => cw.sizes.map((s) => String(s.size).trim())).filter(Boolean))
+    );
+    const finalSizes = distinctSizes.length > 0 ? distinctSizes : ['39', '40', '41', '42', '43', '44'];
+
+    // Construct variants array with exact stock per size and color
+    const variants: ProductVariant[] = colorways.flatMap((cw) =>
+      cw.sizes.map((sz) => ({
+        size: String(sz.size).trim(),
+        color: cw.color.trim() || 'Classic Black',
+        colorHex: cw.colorHex || '#09090B',
+        stock: Math.max(0, Number(sz.stock) || 0),
+        additionalPrice: 0,
+      }))
+    );
+
+    // ColorVariantGroup representation
+    const colorVariants: ColorVariantGroup[] = colorways.map((cw) => ({
+      color: cw.color.trim() || 'Classic Black',
+      colorHex: cw.colorHex || '#09090B',
+      images: cw.images.length > 0 ? cw.images : finalImages,
+      sizes: cw.sizes.map((s) => ({
+        size: String(s.size).trim(),
+        stock: Math.max(0, Number(s.stock) || 0),
+      })),
+    }));
+
+    const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+    const finalInStock = totalStock > 0 && formData.inStock;
 
     const discountPercentage = Math.round(
       ((formData.regularPrice - formData.price) / formData.regularPrice) * 100
     );
-
-    const validImages = formData.images.filter(Boolean);
-    const finalImages = validImages.length > 0
-      ? validImages
-      : ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'];
 
     if (editingProduct) {
       const updated: Product = {
@@ -231,12 +443,14 @@ export const ProductManager: React.FC = () => {
         discountPercentage: discountPercentage > 0 ? discountPercentage : undefined,
         sku: formData.sku,
         description: formData.description,
-        inStock: formData.inStock,
+        inStock: finalInStock,
         isFeatured: formData.isFeatured,
         isNewArrival: formData.isNewArrival,
         images: finalImages,
-        sizes: sizes.length ? sizes : ['40', '41', '42'],
-        colors: colors.length ? colors : [{ name: 'Standard', hex: '#000000' }],
+        sizes: finalSizes,
+        colors: finalColors,
+        variants,
+        colorVariants,
       };
       updateProduct(updated);
       setEditingProduct(null);
@@ -265,9 +479,11 @@ export const ProductManager: React.FC = () => {
           'High abrasion non-slip outsole',
         ],
         images: finalImages,
-        sizes: sizes.length ? sizes : ['39', '40', '41', '42', '43'],
-        colors: colors.length ? colors : [{ name: 'Classic Black', hex: '#09090B' }],
-        inStock: formData.inStock,
+        sizes: finalSizes,
+        colors: finalColors,
+        inStock: finalInStock,
+        variants,
+        colorVariants,
       };
       addProduct(newProd);
       setIsAddOpen(false);
@@ -679,7 +895,7 @@ export const ProductManager: React.FC = () => {
       {/* Add / Edit Modal */}
       {(isAddOpen || editingProduct) && (
         <div className="admin-modal-overlay">
-          <div className="admin-modal-box" style={{ maxWidth: '640px', padding: '28px' }}>
+          <div className="admin-modal-box" style={{ maxWidth: '880px', width: '95%', padding: '28px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
                 {editingProduct ? 'Edit Footwear Specifications' : 'Publish New Footwear to Store'}
@@ -805,336 +1021,778 @@ export const ProductManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* Product Images (SeaweedFS S3 Upload & Gallery) */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <ImageIcon size={16} color="#D32F2F" />
-                    <span>Product Images ({formData.images.length})</span>
-                    <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 500 }}>• First image is primary</span>
-                  </label>
+              {/* ─── COLORWAYS, PHOTOS & SIZE-WISE STOCK INVENTORY ─── */}
+              <div style={{
+                backgroundColor: '#F8FAFC',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: '12px',
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '18px',
+              }}>
+                {/* Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  borderBottom: '1px solid #E2E8F0',
+                  paddingBottom: '14px',
+                }}>
+                  <div>
+                    <div style={{
+                      fontSize: '0.95rem',
+                      fontWeight: 800,
+                      color: '#0F172A',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}>
+                      <Palette size={18} color="#D32F2F" />
+                      <span>Colorways, Photos & Size-Wise Stock</span>
+                      <span style={{
+                        backgroundColor: '#DCFCE7',
+                        color: '#15803D',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                      }}>
+                        {colorways.length} {colorways.length === 1 ? 'Color' : 'Colors'} Configured
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: '#64748B', margin: '4px 0 0 0' }}>
+                      Upload shoe photos for each color, set sizes, and define exact stock per size (e.g. Size 40: 10 shoes, Size 41: 5 shoes).
+                    </p>
+                  </div>
 
                   <button
                     type="button"
-                    onClick={() => setShowManualUrl(!showManualUrl)}
+                    onClick={handleAddColorway}
+                    className="btn btn-secondary btn-sm"
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#475569',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #CBD5E1',
+                    }}
+                  >
+                    <Plus size={14} color="#D32F2F" />
+                    <span>Add Another Colorway</span>
+                  </button>
+                </div>
+
+                {/* Upload Error Banner */}
+                {uploadError && (
+                  <div style={{
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    backgroundColor: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    color: '#DC2626',
+                    fontSize: '0.8rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}>
+                    <AlertCircle size={16} />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
+
+                {/* Colorway Cards */}
+                {colorways.map((cw, cwIdx) => {
+                  const cwTotalStock = cw.sizes.reduce((sum, s) => sum + s.stock, 0);
+                  const isUploadingThis = uploadingColorwayId === cw.id;
+                  const isShowUrl = showColorwayUrl[cw.id] || false;
+                  const manualUrl = colorwayUrlInput[cw.id] || '';
+                  const customSize = customSizeInput[cw.id] || '';
+
+                  return (
+                    <div
+                      key={cw.id}
+                      style={{
+                        backgroundColor: '#FFFFFF',
+                        border: '1.5px solid #E2E8F0',
+                        borderRadius: '10px',
+                        padding: '18px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '16px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                      }}
+                    >
+                      {/* Top Bar: Color Title, Swatch, Hex & Delete */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '12px',
+                        borderBottom: '1px solid #F1F5F9',
+                        paddingBottom: '12px',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', flex: 1 }}>
+                          <span style={{
+                            backgroundColor: '#0F172A',
+                            color: '#FFFFFF',
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                          }}>
+                            COLORWAY #{cwIdx + 1}
+                          </span>
+
+                          {/* Color Swatch Picker */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '50%',
+                              backgroundColor: cw.colorHex || '#09090B',
+                              border: '2px solid #CBD5E1',
+                              overflow: 'hidden',
+                              position: 'relative',
+                              cursor: 'pointer',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                            }}>
+                              <input
+                                type="color"
+                                value={cw.colorHex || '#09090B'}
+                                onChange={(e) => handleUpdateColorway(cw.id, { colorHex: e.target.value })}
+                                style={{
+                                  position: 'absolute',
+                                  top: -8,
+                                  left: -8,
+                                  width: 44,
+                                  height: 44,
+                                  opacity: 0,
+                                  cursor: 'pointer',
+                                }}
+                                title="Pick hex color"
+                              />
+                            </div>
+
+                            <input
+                              type="text"
+                              required
+                              placeholder="Color name (e.g. Classic Black)"
+                              value={cw.color}
+                              onChange={(e) => handleUpdateColorway(cw.id, { color: e.target.value })}
+                              className="admin-input"
+                              style={{ width: '180px', fontWeight: 700 }}
+                            />
+
+                            <input
+                              type="text"
+                              value={cw.colorHex}
+                              onChange={(e) => handleUpdateColorway(cw.id, { colorHex: e.target.value })}
+                              className="admin-input"
+                              style={{ width: '85px', fontSize: '0.75rem', fontFamily: 'monospace' }}
+                              placeholder="#09090B"
+                            />
+                          </div>
+
+                          {/* Total Stock in this Color */}
+                          <span style={{
+                            backgroundColor: cwTotalStock > 0 ? '#EFF6FF' : '#FEF2F2',
+                            color: cwTotalStock > 0 ? '#1D4ED8' : '#DC2626',
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: `1px solid ${cwTotalStock > 0 ? '#BFDBFE' : '#FECACA'}`,
+                          }}>
+                            {cwTotalStock} pairs total
+                          </span>
+                        </div>
+
+                        {colorways.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveColorway(cw.id)}
+                            style={{
+                              background: '#FEE2E2',
+                              border: '1px solid #FECACA',
+                              color: '#DC2626',
+                              borderRadius: '6px',
+                              padding: '5px 8px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                            }}
+                            title="Remove this colorway"
+                          >
+                            <Trash2 size={13} />
+                            <span>Remove Color</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Quick Color Presets */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>Quick presets:</span>
+                        {PRESET_COLORS.map((pc) => (
+                          <button
+                            key={pc.name}
+                            type="button"
+                            onClick={() => handleUpdateColorway(cw.id, { color: pc.name, colorHex: pc.hex })}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              border: cw.color === pc.name ? '1.5px solid #0F172A' : '1px solid #E2E8F0',
+                              backgroundColor: cw.color === pc.name ? '#0F172A' : '#F8FAFC',
+                              color: cw.color === pc.name ? '#FFFFFF' : '#334155',
+                              fontSize: '0.68rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <span style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              backgroundColor: pc.hex,
+                              border: '1px solid rgba(0,0,0,0.15)',
+                            }} />
+                            <span>{pc.name}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* ─── PHOTOS FOR THIS COLORWAY ─── */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <ImageIcon size={14} color="#D32F2F" />
+                            <span>Photos for {cw.color || 'this color'} ({cw.images.length})</span>
+                            <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 500 }}>• First photo is shown on customer selection</span>
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() => setShowColorwayUrl((prev) => ({ ...prev, [cw.id]: !isShowUrl }))}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#475569',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            <Link2 size={12} />
+                            <span>{isShowUrl ? 'Hide URL' : 'Add External URL'}</span>
+                          </button>
+                        </div>
+
+                        {/* Drag and Drop Zone */}
+                        <div
+                          style={{
+                            border: '2px dashed #CBD5E1',
+                            borderRadius: '8px',
+                            padding: '14px',
+                            textAlign: 'center',
+                            backgroundColor: '#F8FAFC',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            transition: 'all 0.2s ease',
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.style.borderColor = '#D32F2F';
+                            e.currentTarget.style.backgroundColor = '#FEF2F2';
+                          }}
+                          onDragLeave={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.style.borderColor = '#CBD5E1';
+                            e.currentTarget.style.backgroundColor = '#F8FAFC';
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.style.borderColor = '#CBD5E1';
+                            e.currentTarget.style.backgroundColor = '#F8FAFC';
+                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                              const pseudoEvent = {
+                                target: { files: e.dataTransfer.files, value: '' },
+                              } as unknown as React.ChangeEvent<HTMLInputElement>;
+                              handleColorwayFileUpload(cw.id, pseudoEvent);
+                            }
+                          }}
+                        >
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                            onChange={(e) => handleColorwayFileUpload(cw.id, e)}
+                            disabled={isUploadingThis}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              opacity: 0,
+                              cursor: isUploadingThis ? 'not-allowed' : 'pointer',
+                            }}
+                          />
+                          {isUploadingThis ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', color: '#D32F2F' }}>
+                              <Loader2 size={22} style={{ animation: 'spin 1s linear infinite' }} />
+                              <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>
+                                Uploading {cw.color} photos to SeaweedFS...
+                              </span>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                              <UploadCloud size={18} color="#D32F2F" />
+                              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1E293B' }}>
+                                Click to browse or drag & drop photos of {cw.color || 'this color'}
+                              </span>
+                              <span style={{ fontSize: '0.7rem', color: '#64748B' }}>
+                                (PNG, JPG, WebP)
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Optional Manual URL Input */}
+                        {isShowUrl && (
+                          <div style={{
+                            marginTop: '8px',
+                            padding: '10px',
+                            borderRadius: '6px',
+                            backgroundColor: '#F1F5F9',
+                            display: 'flex',
+                            gap: '8px',
+                            alignItems: 'center',
+                          }}>
+                            <input
+                              type="url"
+                              placeholder="https://... or /images/..."
+                              value={manualUrl}
+                              onChange={(e) => setColorwayUrlInput((prev) => ({ ...prev, [cw.id]: e.target.value }))}
+                              className="admin-input"
+                              style={{ flex: 1, backgroundColor: '#FFFFFF', fontSize: '0.8rem' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAddColorwayManualUrl(cw.id)}
+                              disabled={!manualUrl.trim()}
+                              className="btn btn-secondary btn-sm"
+                              style={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}
+                            >
+                              Add Photo URL
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Photos Thumbnail Strip */}
+                        {cw.images.length > 0 && (
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
+                            gap: '8px',
+                            marginTop: '10px',
+                          }}>
+                            {cw.images.map((imgUrl, imgIdx) => (
+                              <div
+                                key={imgIdx}
+                                style={{
+                                  position: 'relative',
+                                  border: imgIdx === 0 ? '2px solid #D32F2F' : '1px solid #E2E8F0',
+                                  borderRadius: '6px',
+                                  overflow: 'hidden',
+                                  backgroundColor: '#FFFFFF',
+                                  aspectRatio: '1',
+                                }}
+                              >
+                                <Image
+                                  src={imgUrl}
+                                  alt={`${cw.color} photo ${imgIdx + 1}`}
+                                  fill
+                                  sizes="90px"
+                                  style={{ objectFit: 'cover' }}
+                                  unoptimized={imgUrl.startsWith('/api/')}
+                                />
+
+                                {imgIdx === 0 ? (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '3px',
+                                    left: '3px',
+                                    backgroundColor: '#D32F2F',
+                                    color: '#FFFFFF',
+                                    fontSize: '0.58rem',
+                                    fontWeight: 800,
+                                    padding: '1px 5px',
+                                    borderRadius: '3px',
+                                    zIndex: 2,
+                                  }}>
+                                    PRIMARY
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetColorwayPrimaryImage(cw.id, imgIdx)}
+                                    style={{
+                                      position: 'absolute',
+                                      top: '3px',
+                                      left: '3px',
+                                      backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                                      color: '#FFFFFF',
+                                      border: 'none',
+                                      borderRadius: '3px',
+                                      padding: '1px 4px',
+                                      fontSize: '0.58rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      zIndex: 2,
+                                    }}
+                                  >
+                                    Primary
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveColorwayImage(cw.id, imgIdx)}
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: '3px',
+                                    right: '3px',
+                                    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                    color: '#FFFFFF',
+                                    border: 'none',
+                                    borderRadius: '3px',
+                                    padding: '2px 4px',
+                                    cursor: 'pointer',
+                                    zIndex: 2,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                  title="Delete photo"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ─── SIZES & STOCK PER SIZE INVENTORY ─── */}
+                      <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Layers size={14} color="#2563EB" />
+                            <span>Sizes & Stock Quantity in {cw.color || 'this color'}</span>
+                          </label>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleBulkSetStock(cw.id, 10)}
+                              style={{
+                                background: 'none',
+                                border: '1px solid #CBD5E1',
+                                borderRadius: '4px',
+                                padding: '2px 8px',
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                color: '#475569',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Set All to 10 pcs
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                ['39', '40', '41', '42', '43', '44'].forEach((s) => handleAddSizeToColorway(cw.id, s, 10));
+                              }}
+                              style={{
+                                background: 'none',
+                                border: '1px solid #CBD5E1',
+                                borderRadius: '4px',
+                                padding: '2px 8px',
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                color: '#475569',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              + Standard 39-44
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Quick Size Add Pills & Custom Input */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          flexWrap: 'wrap',
+                          marginBottom: '12px',
+                          backgroundColor: '#F8FAFC',
+                          padding: '8px 10px',
+                          borderRadius: '6px',
+                        }}>
+                          <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>Quick Add Size:</span>
+                          {STANDARD_SHOE_SIZES.map((sz) => {
+                            const alreadyAdded = cw.sizes.some((s) => s.size === sz);
+                            return (
+                              <button
+                                key={sz}
+                                type="button"
+                                onClick={() => handleAddSizeToColorway(cw.id, sz, 10)}
+                                style={{
+                                  padding: '2px 7px',
+                                  borderRadius: '4px',
+                                  border: alreadyAdded ? '1px solid #94A3B8' : '1px dashed #CBD5E1',
+                                  backgroundColor: alreadyAdded ? '#F1F5F9' : '#FFFFFF',
+                                  color: alreadyAdded ? '#64748B' : '#0F172A',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                }}
+                                title={alreadyAdded ? `Size ${sz} already added` : `Add Size ${sz}`}
+                              >
+                                {alreadyAdded ? `✓ ${sz}` : `+ ${sz}`}
+                              </button>
+                            );
+                          })}
+
+                          {/* Custom size input */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
+                            <input
+                              type="text"
+                              placeholder="e.g. 47"
+                              value={customSize}
+                              onChange={(e) => setCustomSizeInput((prev) => ({ ...prev, [cw.id]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddSizeToColorway(cw.id, customSize, 10);
+                                  setCustomSizeInput((prev) => ({ ...prev, [cw.id]: '' }));
+                                }
+                              }}
+                              style={{ width: '60px', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '4px', border: '1px solid #CBD5E1' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleAddSizeToColorway(cw.id, customSize, 10);
+                                setCustomSizeInput((prev) => ({ ...prev, [cw.id]: '' }));
+                              }}
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: '4px',
+                                backgroundColor: '#0F172A',
+                                color: '#FFFFFF',
+                                border: 'none',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Add
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Sizes Inventory List */}
+                        {cw.sizes.length === 0 ? (
+                          <div style={{
+                            padding: '16px',
+                            textAlign: 'center',
+                            color: '#94A3B8',
+                            fontSize: '0.78rem',
+                            border: '1px dashed #CBD5E1',
+                            borderRadius: '6px',
+                          }}>
+                            No sizes added yet for {cw.color}. Click the quick add size buttons above to configure inventory.
+                          </div>
+                        ) : (
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                            gap: '8px',
+                          }}>
+                            {cw.sizes.map((sz) => {
+                              const isOutOfStock = sz.stock === 0;
+                              const isLowStock = sz.stock > 0 && sz.stock <= 5;
+
+                              return (
+                                <div
+                                  key={sz.size}
+                                  style={{
+                                    border: isOutOfStock ? '1px solid #FECACA' : '1px solid #E2E8F0',
+                                    borderRadius: '8px',
+                                    padding: '8px 10px',
+                                    backgroundColor: isOutOfStock ? '#FEF2F2' : '#FFFFFF',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '6px',
+                                  }}
+                                >
+                                  {/* Size Label */}
+                                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0F172A' }}>
+                                      Size {sz.size}
+                                    </span>
+                                    <span style={{
+                                      fontSize: '0.62rem',
+                                      fontWeight: 800,
+                                      color: isOutOfStock ? '#DC2626' : isLowStock ? '#D97706' : '#15803D',
+                                    }}>
+                                      {isOutOfStock ? 'OUT OF STOCK' : isLowStock ? `${sz.stock} LOW` : `${sz.stock} in stock`}
+                                    </span>
+                                  </div>
+
+                                  {/* Stock Stepper & Input */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateSizeStock(cw.id, sz.size, sz.stock - 1)}
+                                      style={{
+                                        width: '24px',
+                                        height: '24px',
+                                        borderRadius: '4px',
+                                        border: '1px solid #CBD5E1',
+                                        backgroundColor: '#F8FAFC',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <Minus size={11} />
+                                    </button>
+
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={sz.stock}
+                                      onChange={(e) => handleUpdateSizeStock(cw.id, sz.size, parseInt(e.target.value, 10))}
+                                      style={{
+                                        width: '46px',
+                                        padding: '3px 4px',
+                                        fontSize: '0.82rem',
+                                        fontWeight: 800,
+                                        textAlign: 'center',
+                                        borderRadius: '4px',
+                                        border: '1px solid #CBD5E1',
+                                      }}
+                                    />
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateSizeStock(cw.id, sz.size, sz.stock + 1)}
+                                      style={{
+                                        width: '24px',
+                                        height: '24px',
+                                        borderRadius: '4px',
+                                        border: '1px solid #CBD5E1',
+                                        backgroundColor: '#F8FAFC',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <Plus size={11} />
+                                    </button>
+
+                                    {/* Remove Size Button */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveSizeFromColorway(cw.id, sz.size)}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#94A3B8',
+                                        cursor: 'pointer',
+                                        padding: '2px',
+                                        marginLeft: '2px',
+                                      }}
+                                      title={`Remove size ${sz.size}`}
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Bottom Total Inventory Banner */}
+                <div style={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '10px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Package size={18} color="#D32F2F" />
+                    <div>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0F172A' }}>
+                        Total Product Inventory:{' '}
+                        {colorways.reduce((sum, cw) => sum + cw.sizes.reduce((sSum, s) => sSum + s.stock, 0), 0)} pairs
+                      </span>
+                      <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                        {colorways.map((cw) => `${cw.color}: ${cw.sizes.reduce((sSum, s) => sSum + s.stock, 0)}`).join(' • ')}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddColorway}
+                    style={{
+                      backgroundColor: '#F1F5F9',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '6px',
+                      padding: '6px 12px',
                       fontSize: '0.75rem',
-                      fontWeight: 600,
+                      fontWeight: 700,
+                      color: '#0F172A',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px',
                     }}
                   >
-                    <Link2 size={13} />
-                    <span>{showManualUrl ? 'Hide URL Input' : 'Add External URL'}</span>
+                    <Plus size={13} color="#D32F2F" />
+                    <span>+ Add Another Colorway</span>
                   </button>
-                </div>
-
-                {/* SeaweedFS Drag-and-Drop / Upload Zone */}
-                <div
-                  style={{
-                    border: '2px dashed #CBD5E1',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    textAlign: 'center',
-                    backgroundColor: '#F8FAFC',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.style.borderColor = '#D32F2F';
-                    e.currentTarget.style.backgroundColor = '#FEF2F2';
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.style.borderColor = '#CBD5E1';
-                    e.currentTarget.style.backgroundColor = '#F8FAFC';
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.style.borderColor = '#CBD5E1';
-                    e.currentTarget.style.backgroundColor = '#F8FAFC';
-                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                      const pseudoEvent = {
-                        target: { files: e.dataTransfer.files, value: '' },
-                      } as unknown as React.ChangeEvent<HTMLInputElement>;
-                      handleFileUpload(pseudoEvent);
-                    }
-                  }}
-                >
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
-                    onChange={handleFileUpload}
-                    disabled={isUploading}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      opacity: 0,
-                      cursor: isUploading ? 'not-allowed' : 'pointer',
-                    }}
-                  />
-                  {isUploading ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#D32F2F' }}>
-                      <Loader2 size={28} style={{ animation: 'spin 1s linear infinite' }} />
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>
-                        Uploading to SeaweedFS Storage...
-                      </span>
-                      <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
-                        Verifying magic bytes and registering metadata
-                      </span>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                      <div style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '50%',
-                        backgroundColor: '#FEE2E2',
-                        color: '#D32F2F',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '4px',
-                      }}>
-                        <UploadCloud size={22} />
-                      </div>
-                      <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#1E293B' }}>
-                        Click to browse or drag & drop shoe photos
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
-                        PNG, JPG, WebP, GIF, or SVG • Stored on self-hosted SeaweedFS S3
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Upload Error Banner */}
-                {uploadError && (
-                  <div style={{
-                    marginTop: '8px',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: '#FEF2F2',
-                    border: '1px solid #FECACA',
-                    color: '#DC2626',
-                    fontSize: '0.78rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}>
-                    <AlertCircle size={14} />
-                    <span>{uploadError}</span>
-                  </div>
-                )}
-
-                {/* Optional Manual URL Input */}
-                {showManualUrl && (
-                  <div style={{
-                    marginTop: '10px',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    backgroundColor: '#F1F5F9',
-                    display: 'flex',
-                    gap: '8px',
-                    alignItems: 'center',
-                  }}>
-                    <input
-                      type="url"
-                      placeholder="https://images.unsplash.com/... or /images/..."
-                      value={manualUrlInput}
-                      onChange={(e) => setManualUrlInput(e.target.value)}
-                      className="admin-input"
-                      style={{ flex: 1, backgroundColor: '#FFFFFF' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddManualUrl}
-                      disabled={!manualUrlInput.trim()}
-                      className="btn btn-secondary btn-sm"
-                      style={{ whiteSpace: 'nowrap' }}
-                    >
-                      Add URL
-                    </button>
-                  </div>
-                )}
-
-                {/* Image Thumbnails Gallery */}
-                {formData.images.length > 0 && (
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(105px, 1fr))',
-                    gap: '10px',
-                    marginTop: '12px',
-                  }}>
-                    {formData.images.map((imgUrl, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          position: 'relative',
-                          border: idx === 0 ? '2px solid #D32F2F' : '1px solid #E2E8F0',
-                          borderRadius: '8px',
-                          overflow: 'hidden',
-                          backgroundColor: '#FFFFFF',
-                          aspectRatio: '1',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                        }}
-                      >
-                        <Image
-                          src={imgUrl}
-                          alt={`Product preview ${idx + 1}`}
-                          fill
-                          sizes="110px"
-                          style={{ objectFit: 'cover' }}
-                          unoptimized={imgUrl.startsWith('/api/')}
-                        />
-
-                        {/* Primary Badge */}
-                        {idx === 0 ? (
-                          <div style={{
-                            position: 'absolute',
-                            top: '4px',
-                            left: '4px',
-                            backgroundColor: '#D32F2F',
-                            color: '#FFFFFF',
-                            fontSize: '0.62rem',
-                            fontWeight: 800,
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '2px',
-                            zIndex: 2,
-                          }}>
-                            <Star size={10} fill="#FFFFFF" />
-                            <span>PRIMARY</span>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleSetPrimary(idx)}
-                            title="Set as Primary"
-                            style={{
-                              position: 'absolute',
-                              top: '4px',
-                              left: '4px',
-                              backgroundColor: 'rgba(15, 23, 42, 0.75)',
-                              color: '#FFFFFF',
-                              border: 'none',
-                              borderRadius: '4px',
-                              padding: '2px 5px',
-                              fontSize: '0.62rem',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              zIndex: 2,
-                            }}
-                          >
-                            Set Primary
-                          </button>
-                        )}
-
-                        {/* Action buttons (Delete & Reorder) */}
-                        <div style={{
-                          position: 'absolute',
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)',
-                          padding: '6px 4px 4px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          zIndex: 2,
-                        }}>
-                          <div style={{ display: 'flex', gap: '2px' }}>
-                            {idx > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => handleMoveImage(idx, 'up')}
-                                title="Move Earlier"
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: '#FFFFFF',
-                                  cursor: 'pointer',
-                                  padding: '2px',
-                                }}
-                              >
-                                <ArrowUp size={12} />
-                              </button>
-                            )}
-                            {idx < formData.images.length - 1 && (
-                              <button
-                                type="button"
-                                onClick={() => handleMoveImage(idx, 'down')}
-                                title="Move Later"
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: '#FFFFFF',
-                                  cursor: 'pointer',
-                                  padding: '2px',
-                                }}
-                              >
-                                <ArrowDown size={12} />
-                              </button>
-                            )}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(idx)}
-                            title="Remove Photo"
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#EF4444',
-                              cursor: 'pointer',
-                              padding: '2px',
-                            }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Sizes & Colors */}
-              <div className="admin-grid-2col">
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
-                    Sizes (comma separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.sizesStr}
-                    onChange={(e) => setFormData({ ...formData, sizesStr: e.target.value })}
-                    className="admin-input"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
-                    Colors (comma separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.colorsStr}
-                    onChange={(e) => setFormData({ ...formData, colorsStr: e.target.value })}
-                    className="admin-input"
-                  />
                 </div>
               </div>
 

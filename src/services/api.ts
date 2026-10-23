@@ -1,4 +1,4 @@
-import { Product, BrandInfo, ShoeCategory } from '../types/product';
+import { Product, BrandInfo, ShoeCategory, ProductVariant, ColorVariantGroup } from '../types/product';
 import { Order, Customer } from '../types/admin';
 import { HeroSlide, PromoBanner } from '../types/banner';
 
@@ -47,10 +47,10 @@ export interface RawBackendProduct {
   reviewCount?: number;
   description?: string | null;
   features?: string[];
-  images?: Array<string | { url: string }>;
+  images?: Array<string | { url: string; alt?: string; isPrimary?: boolean; order?: number }>;
   brand?: { name: string; slug: string };
   category?: { name: string; slug: string };
-  variants?: Array<{ size?: string; color?: string; stock?: number }>;
+  variants?: Array<{ id?: string; size?: string; color?: string; colorHex?: string; stock?: number; additionalPrice?: number }>;
   _count?: { reviews?: number };
 }
 
@@ -113,26 +113,69 @@ export function transformBackendProduct(bp: RawBackendProduct): Product {
     ? Math.round(((regularPrice - salePrice) / regularPrice) * 100) 
     : undefined;
 
-  const images: string[] = Array.isArray(bp.images) && bp.images.length > 0
-    ? bp.images.map((img) => typeof img === 'string' ? img : img.url)
-    : ['https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80'];
+  const rawImages = Array.isArray(bp.images) && bp.images.length > 0
+    ? bp.images.map((img) => typeof img === 'string' ? { url: img, alt: '' } : { url: img.url, alt: img.alt || '' })
+    : [{ url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80', alt: '' }];
+  const images: string[] = rawImages.map(img => img.url);
 
-  const variantSizes = Array.isArray(bp.variants)
-    ? Array.from(new Set(bp.variants.map((v) => v.size).filter((s): s is string => Boolean(s))))
+  const variants: ProductVariant[] = Array.isArray(bp.variants)
+    ? bp.variants.map((v) => ({
+        id: v.id,
+        size: String(v.size || '').trim(),
+        color: (v.color || 'Classic Black').trim(),
+        colorHex: v.colorHex || '#18181B',
+        stock: typeof v.stock === 'number' ? v.stock : Number(v.stock) || 0,
+        additionalPrice: typeof v.additionalPrice === 'number' ? v.additionalPrice : Number(v.additionalPrice) || 0,
+      })).filter((v) => v.size)
+    : [];
+
+  // Group variants into ColorVariantGroup
+  const colorMap = new Map<string, { colorHex: string; sizes: Array<{ size: string; stock: number }> }>();
+  for (const v of variants) {
+    const key = v.color || 'Classic Black';
+    if (!colorMap.has(key)) {
+      colorMap.set(key, { colorHex: v.colorHex || '#18181B', sizes: [] });
+    }
+    const group = colorMap.get(key)!;
+    if (!group.sizes.some(s => s.size === v.size)) {
+      group.sizes.push({ size: v.size, stock: v.stock });
+    }
+  }
+
+  const colorVariants: ColorVariantGroup[] = [];
+  colorMap.forEach((val, cName) => {
+    const matchedImages = rawImages
+      .filter(img => img.alt && img.alt.toLowerCase().includes(cName.toLowerCase()))
+      .map(img => img.url);
+    colorVariants.push({
+      color: cName,
+      colorHex: val.colorHex,
+      images: matchedImages.length > 0 ? matchedImages : images,
+      sizes: val.sizes,
+    });
+  });
+
+  const variantSizes = variants.length > 0
+    ? Array.from(new Set(variants.map((v) => v.size)))
     : ['39', '40', '41', '42', '43', '44'];
 
-  const variantColors = Array.isArray(bp.variants)
-    ? Array.from(new Set(bp.variants.map((v) => v.color).filter((c): c is string => Boolean(c)))).map((cName) => ({
-        name: cName,
-        hex: cName.toLowerCase().includes('white') ? '#F8FAFC' 
-          : cName.toLowerCase().includes('beige') ? '#E7D3B8'
-          : cName.toLowerCase().includes('brown') || cName.toLowerCase().includes('tan') ? '#8B5A2B'
-          : cName.toLowerCase().includes('red') ? '#DC2626'
-          : cName.toLowerCase().includes('blue') || cName.toLowerCase().includes('navy') ? '#1E3A8A'
-          : cName.toLowerCase().includes('gray') || cName.toLowerCase().includes('grey') ? '#6B7280'
-          : '#18181B'
-      }))
-    : [{ name: 'Black', hex: '#18181B' }];
+  const variantColors = colorMap.size > 0
+    ? Array.from(colorMap.entries()).map(([cName, info]) => {
+        const matchedImages = rawImages
+          .filter(img => img.alt && img.alt.toLowerCase().includes(cName.toLowerCase()))
+          .map(img => img.url);
+        return {
+          name: cName,
+          hex: info.colorHex,
+          images: matchedImages.length > 0 ? matchedImages : undefined,
+        };
+      })
+    : [{ name: 'Classic Black', hex: '#18181B' }];
+
+  const totalVariantStock = variants.length > 0
+    ? variants.reduce((sum, v) => sum + v.stock, 0)
+    : 100;
+  const inStock = bp.isActive !== false && totalVariantStock > 0;
 
   return {
     id: String(bp.id),
@@ -160,9 +203,11 @@ export function transformBackendProduct(bp: RawBackendProduct): Product {
       'Breathable interior lining',
     ],
     images,
-    sizes: variantSizes.length > 0 ? variantSizes : ['39', '40', '41', '42', '43', '44'],
-    colors: variantColors.length > 0 ? variantColors : [{ name: 'Black', hex: '#18181B' }],
-    inStock: bp.isActive !== false,
+    sizes: variantSizes,
+    colors: variantColors,
+    inStock,
+    variants,
+    colorVariants,
   };
 }
 
@@ -536,23 +581,43 @@ export async function createApiProduct(product: Product): Promise<{ success: boo
       new Map(rawColors.map((c) => [(c.name || 'Classic Black').trim().toLowerCase(), c])).values()
     );
 
-    const variants = finalSizes.flatMap((size) =>
-      uniqueColors.map((c) => ({
-        size: String(size),
-        color: c.name || 'Classic Black',
-        colorHex: c.hex || '#18181B',
-        stock: 20,
-        additionalPrice: 0,
-      }))
-    );
+    // Build variants: use product.variants if provided, or build from sizes & colors
+    const variants = product.variants && product.variants.length > 0
+      ? product.variants.map((v) => ({
+          size: String(v.size).trim(),
+          color: (v.color || 'Classic Black').trim(),
+          colorHex: v.colorHex || '#18181B',
+          stock: typeof v.stock === 'number' ? v.stock : Number(v.stock) || 0,
+          additionalPrice: typeof v.additionalPrice === 'number' ? v.additionalPrice : Number(v.additionalPrice) || 0,
+        }))
+      : finalSizes.flatMap((size) =>
+          uniqueColors.map((c) => ({
+            size: String(size),
+            color: c.name || 'Classic Black',
+            colorHex: c.hex || '#18181B',
+            stock: 20,
+            additionalPrice: 0,
+          }))
+        );
 
     const images = (product.images || [])
       .filter((u): u is string => typeof u === 'string' && u.trim().length > 0)
-      .map((url, idx) => ({
-        url: url.trim(),
-        isPrimary: idx === 0,
-        order: idx,
-      }));
+      .map((url, idx) => {
+        let matchedColor = '';
+        if (product.colorVariants && product.colorVariants.length > 0) {
+          const cv = product.colorVariants.find((c) => c.images?.includes(url));
+          if (cv) matchedColor = cv.color;
+        } else if (product.colors && product.colors.length > 0) {
+          const matched = product.colors.find((c) => c.images?.includes(url));
+          if (matched) matchedColor = matched.name;
+        }
+        return {
+          url: url.trim(),
+          alt: matchedColor || product.name || 'Footwear',
+          isPrimary: idx === 0,
+          order: idx,
+        };
+      });
 
     const cleanCategorySlug = (product.category || 'formal').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
     const cleanBrandSlug = (product.brandSlug || (product.brand ? product.brand.toLowerCase().replace(/[^a-z0-9-]+/g, '-') : 'zap-signature'));
@@ -619,12 +684,32 @@ export async function updateApiProduct(id: string, product: Partial<Product>): P
     if (product.inStock !== undefined) payload.isActive = product.inStock;
     if (product.category) payload.categorySlug = product.category;
     if (product.brandSlug) payload.brandSlug = product.brandSlug;
-    if (product.images && product.images.length > 0) {
-      payload.images = product.images.map((url, idx) => ({
-        url,
-        isPrimary: idx === 0,
-        order: idx,
+    if (product.variants && Array.isArray(product.variants)) {
+      payload.variants = product.variants.map((v) => ({
+        size: String(v.size).trim(),
+        color: (v.color || 'Classic Black').trim(),
+        colorHex: v.colorHex || '#18181B',
+        stock: typeof v.stock === 'number' ? v.stock : Number(v.stock) || 0,
+        additionalPrice: typeof v.additionalPrice === 'number' ? v.additionalPrice : Number(v.additionalPrice) || 0,
       }));
+    }
+    if (product.images && product.images.length > 0) {
+      payload.images = product.images.map((url, idx) => {
+        let matchedColor = '';
+        if (product.colorVariants && product.colorVariants.length > 0) {
+          const cv = product.colorVariants.find((c) => c.images?.includes(url));
+          if (cv) matchedColor = cv.color;
+        } else if (product.colors && product.colors.length > 0) {
+          const matched = product.colors.find((c) => c.images?.includes(url));
+          if (matched) matchedColor = matched.name;
+        }
+        return {
+          url,
+          alt: matchedColor || product.name || 'Footwear',
+          isPrimary: idx === 0,
+          order: idx,
+        };
+      });
     }
 
     const res = await resilientApiFetch(`/api/products/${id}`, {
