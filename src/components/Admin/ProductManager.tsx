@@ -1293,6 +1293,32 @@ export const ProductManager: React.FC = () => {
                         ))}
                       </div>
 
+                      {/* ─── 2ND DESCRIPTION: COLORWAY-SPECIFIC DESCRIPTION ─── */}
+                      <div style={{
+                        backgroundColor: '#F8FAFC',
+                        border: '1.5px solid #E2E8F0',
+                        borderRadius: '8px',
+                        padding: '12px 14px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
+                          <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <FileText size={15} color="#D32F2F" />
+                            <span>2nd Description: Specifications & Details for {cw.color || 'this color'} (Optional)</span>
+                          </label>
+                          <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>
+                            Displayed on product page when shopper selects {cw.color || 'this color'}
+                          </span>
+                        </div>
+                        <textarea
+                          rows={2}
+                          placeholder={`e.g. ${cw.color || 'This color'} edition crafted with premium upper material, breathable lining, and durable rubber foam sole...`}
+                          value={cw.description || ''}
+                          onChange={(e) => handleUpdateColorway(cw.id, { description: e.target.value })}
+                          className="admin-input"
+                          style={{ fontSize: '0.82rem', resize: 'vertical', width: '100%', backgroundColor: '#FFFFFF' }}
+                        />
+                      </div>
+
                       {/* ─── PHOTOS FOR THIS COLORWAY ─── */}
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -1764,27 +1790,6 @@ export const ProductManager: React.FC = () => {
                             })}
                           </div>
                         )}
-                      </div>
-
-                      {/* Description for this specific color */}
-                      <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '12px', marginTop: '4px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                          <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <FileText size={14} color="#D32F2F" />
-                            <span>Description & Specifications for {cw.color || 'this color'} (Optional)</span>
-                          </label>
-                          <span style={{ fontSize: '0.7rem', color: '#64748B' }}>
-                            Displayed when shopper selects {cw.color || 'this color'}
-                          </span>
-                        </div>
-                        <textarea
-                          rows={2}
-                          placeholder={`e.g. ${cw.color || 'This color'} edition crafted with premium upper material, moisture-wicking lining, and durable rubber foam sole...`}
-                          value={cw.description || ''}
-                          onChange={(e) => handleUpdateColorway(cw.id, { description: e.target.value })}
-                          className="admin-input"
-                          style={{ fontSize: '0.8rem', resize: 'vertical', width: '100%' }}
-                        />
                       </div>
                     </div>
                   );
