@@ -1021,6 +1021,21 @@ export const ProductManager: React.FC = () => {
                 </div>
               </div>
 
+              {/* Product Description */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
+                  Product Description
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Describe footwear construction, upper materials, insole comfort, ergonomics, and styling advice..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="admin-input"
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+
               {/* ─── COLORWAYS, PHOTOS & SIZE-WISE STOCK INVENTORY ─── */}
               <div style={{
                 backgroundColor: '#F8FAFC',
@@ -1794,20 +1809,6 @@ export const ProductManager: React.FC = () => {
                     <span>+ Add Another Colorway</span>
                   </button>
                 </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
-                  Product Description
-                </label>
-                <textarea
-                  rows={3}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="admin-input"
-                  style={{ resize: 'vertical' }}
-                />
               </div>
 
               {/* Toggles */}
