@@ -142,6 +142,23 @@ export function transformBackendProduct(bp: RawBackendProduct): Product {
     }
   }
 
+  // Parse per-color descriptions if encoded in description
+  let parsedDescription = bp.description || '';
+  let colorDescriptions: Record<string, string> = {};
+  if (bp.description && typeof bp.description === 'string' && bp.description.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(bp.description);
+      if (parsed && typeof parsed === 'object') {
+        if ('main' in parsed) parsedDescription = parsed.main || '';
+        if ('colors' in parsed && typeof parsed.colors === 'object') {
+          colorDescriptions = parsed.colors;
+        }
+      }
+    } catch {
+      parsedDescription = bp.description || '';
+    }
+  }
+
   const colorVariants: ColorVariantGroup[] = [];
   colorMap.forEach((val, cName) => {
     const matchedImages = rawImages
@@ -152,6 +169,7 @@ export function transformBackendProduct(bp: RawBackendProduct): Product {
       colorHex: val.colorHex,
       images: matchedImages.length > 0 ? matchedImages : images,
       sizes: val.sizes,
+      description: colorDescriptions[cName] || undefined,
     });
   });
 
@@ -193,9 +211,9 @@ export function transformBackendProduct(bp: RawBackendProduct): Product {
     isNewArrival: bp.isNewArrival ?? false,
     isBestseller: bp.isBestseller ?? true,
     isFeatured: bp.isFeatured ?? false,
-    rating: bp.rating ? Number(bp.rating) : 4.8,
-    reviewCount: bp._count?.reviews || bp.reviewCount || 12,
-    description: bp.description || 'Crafted with premium materials and ergonomic precision.',
+    rating: bp.rating ? Number(bp.rating) : 0,
+    reviewCount: bp._count?.reviews || bp.reviewCount || 0,
+    description: parsedDescription,
     features: bp.features || [
       'High-grade premium materials',
       'Ergonomic shock-absorbing insole',
@@ -622,11 +640,29 @@ export async function createApiProduct(product: Product): Promise<{ success: boo
     const cleanCategorySlug = (product.category || 'formal').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
     const cleanBrandSlug = (product.brandSlug || (product.brand ? product.brand.toLowerCase().replace(/[^a-z0-9-]+/g, '-') : 'zap-signature'));
 
+    // Encode per-color descriptions if configured
+    let finalDescription = product.description || '';
+    const hasColorDescriptions = product.colorVariants?.some(
+      (cv) => cv.description && cv.description.trim().length > 0
+    );
+    if (hasColorDescriptions) {
+      const colorMap: Record<string, string> = {};
+      product.colorVariants?.forEach((cv) => {
+        if (cv.description && cv.description.trim().length > 0) {
+          colorMap[cv.color] = cv.description.trim();
+        }
+      });
+      finalDescription = JSON.stringify({
+        main: product.description || '',
+        colors: colorMap,
+      });
+    }
+
     const payload = {
       name: product.name || 'Unnamed Footwear',
       slug: product.slug,
       sku: product.sku || `ZAP-${Date.now().toString().slice(-6)}`,
-      description: product.description || '',
+      description: finalDescription,
       price: finalPrice,
       salePrice: finalSalePrice,
       gender: product.gender || 'UNISEX',
@@ -674,7 +710,26 @@ export async function updateApiProduct(id: string, product: Partial<Product>): P
     if (product.name) payload.name = product.name;
     if (product.slug) payload.slug = product.slug;
     if (product.sku) payload.sku = product.sku;
-    if (product.description !== undefined) payload.description = product.description;
+
+    if (product.description !== undefined || product.colorVariants !== undefined) {
+      const hasColorDescriptions = product.colorVariants?.some(
+        (cv) => cv.description && cv.description.trim().length > 0
+      );
+      if (hasColorDescriptions) {
+        const colorMap: Record<string, string> = {};
+        product.colorVariants?.forEach((cv) => {
+          if (cv.description && cv.description.trim().length > 0) {
+            colorMap[cv.color] = cv.description.trim();
+          }
+        });
+        payload.description = JSON.stringify({
+          main: product.description || '',
+          colors: colorMap,
+        });
+      } else if (product.description !== undefined) {
+        payload.description = product.description;
+      }
+    }
     if (product.price !== undefined) {
       payload.price = product.regularPrice || product.price;
       payload.salePrice = (product.regularPrice && product.regularPrice > product.price) ? product.price : null;
@@ -726,6 +781,66 @@ export async function updateApiProduct(id: string, product: Partial<Product>): P
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to update product';
     return { success: false, message };
+  }
+}
+
+/**
+ * Fetch approved customer reviews for a product from the backend
+ */
+export async function fetchProductReviews(productId: string): Promise<{ success: boolean; data?: any[]; avgRating?: number; total?: number; message?: string }> {
+  try {
+    const res = await resilientApiFetch(`/api/reviews?productId=${encodeURIComponent(productId)}`);
+    if (res.ok && res.data) {
+      const payloadData = res.data as { items?: any[]; data?: any[]; avgRating?: number; total?: number };
+      const items = Array.isArray(res.data) 
+        ? res.data 
+        : (payloadData.items || payloadData.data || []);
+      return {
+        success: true,
+        data: items,
+        avgRating: payloadData.avgRating ?? 0,
+        total: payloadData.total ?? items.length,
+      };
+    }
+    return { success: false, data: [], message: res.message };
+  } catch (err) {
+    return { success: false, data: [], message: err instanceof Error ? err.message : 'Failed to fetch reviews' };
+  }
+}
+
+/**
+ * Submit an authentic customer review
+ */
+export async function submitProductReview(reviewData: {
+  productId: string;
+  rating: number;
+  title: string;
+  body: string;
+}): Promise<{ success: boolean; data?: unknown; message?: string }> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const adminPasskey = typeof window !== 'undefined' ? (sessionStorage.getItem('zap_admin_pass') || 'zap@admin2026') : 'zap@admin2026';
+    const authToken = token || adminPasskey;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+      'x-admin-key': adminPasskey,
+    };
+
+    const res = await resilientApiFetch('/api/reviews', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(reviewData),
+    });
+
+    return {
+      success: res.ok,
+      data: res.data,
+      message: res.message,
+    };
+  } catch (err) {
+    return { success: false, message: err instanceof Error ? err.message : 'Failed to submit review' };
   }
 }
 

@@ -28,7 +28,9 @@ import { WishlistDrawer } from '../Modals/WishlistDrawer';
 import { CheckoutModal } from '../Modals/CheckoutModal';
 import { TrackOrderModal } from '../Modals/TrackOrderModal';
 import { SizeGuideModal } from '../Modals/SizeGuideModal';
-import { COLOR_IMAGE_MAP, SAMPLE_REVIEWS } from '../../data/anchorCrest';
+import { COLOR_IMAGE_MAP } from '../../data/anchorCrest';
+import { ProductReview } from '../../types/product';
+import { fetchProductReviews, submitProductReview } from '../../services/api';
 
 interface ProductDetailViewProps {
   initialProduct: Product;
@@ -72,6 +74,14 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   const [showOptionsWarning, setShowOptionsWarning] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Real customer reviews state
+  const [reviewsList, setReviewsList] = useState<ProductReview[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+  const [newReviewAuthor, setNewReviewAuthor] = useState('');
+  const [newReviewComment, setNewReviewComment] = useState('');
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
   // Sync state when product changes (e.g. navigation across related products)
   useEffect(() => {
     setActiveImageIdx(0);
@@ -83,14 +93,42 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
       : (product.sizes?.[0] || '41');
     setSelectedSize(newSz);
     setQuantity(1);
-  }, [product.id]);
 
-  // Reviews state
-  const [reviewsList, setReviewsList] = useState(SAMPLE_REVIEWS);
-  const [newReviewAuthor, setNewReviewAuthor] = useState('');
-  const [newReviewComment, setNewReviewComment] = useState('');
-  const [newReviewRating, setNewReviewRating] = useState(5);
-  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+    // Fetch verified customer reviews for this specific product
+    let isMounted = true;
+    setIsLoadingReviews(true);
+    fetchProductReviews(product.id)
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped: ProductReview[] = res.data.map((r: any) => ({
+            id: r.id || `rev-${Math.random()}`,
+            author: r.user?.name || r.author || 'Verified Customer',
+            location: r.isVerifiedPurchase ? 'Verified Purchase' : 'Shopper',
+            rating: Number(r.rating) || 5,
+            date: r.createdAt
+              ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              : 'Recently',
+            verified: !!r.isVerifiedPurchase,
+            title: r.title || 'Shoe Feedback',
+            comment: r.body || r.comment || '',
+          }));
+          setReviewsList(mapped);
+        } else {
+          setReviewsList([]);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setReviewsList([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingReviews(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [product.id]);
 
   // Fallback related products if not provided
   const finalRelated = (relatedProducts.length > 0 ? relatedProducts : allProducts.filter(p => p.id !== product.id)).slice(0, 4);
@@ -215,24 +253,45 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     e.preventDefault();
     if (!newReviewAuthor.trim() || !newReviewComment.trim()) return;
 
-    const newRev = {
+    const newRev: ProductReview = {
       id: `rev-${Date.now()}`,
       author: newReviewAuthor.trim(),
       location: 'Verified Buyer',
       rating: newReviewRating,
       date: 'Just now',
       verified: true,
-      title: 'Satisfied Customer',
+      title: 'Customer Review',
       comment: newReviewComment.trim(),
     };
 
-    setReviewsList([newRev, ...reviewsList]);
+    setReviewsList((prev) => [newRev, ...prev]);
+    const commentBody = newReviewComment.trim();
     setNewReviewAuthor('');
     setNewReviewComment('');
     setReviewSubmitted(true);
-    showToast('Thank you! Your review has been submitted.');
+    showToast('Thank you! Your verified review has been posted.');
     setTimeout(() => setReviewSubmitted(false), 4000);
+
+    // Sync to PostgreSQL backend
+    submitProductReview({
+      productId: product.id,
+      rating: newReviewRating,
+      title: 'Customer Review',
+      body: commentBody,
+    }).catch(() => {});
   };
+
+  // Dynamic review statistics from actual reviews
+  const totalReviewsCount = reviewsList.length;
+  const calculatedAvgRating = totalReviewsCount > 0
+    ? (reviewsList.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) / totalReviewsCount).toFixed(1)
+    : '0';
+
+  const starBreakdown = [5, 4, 3, 2, 1].map((starNum) => {
+    const matching = reviewsList.filter((r) => Math.round(Number(r.rating)) === starNum).length;
+    const pct = totalReviewsCount > 0 ? Math.round((matching / totalReviewsCount) * 100) : 0;
+    return { star: starNum, count: matching, pct };
+  });
 
   // Color thumbnails helper
   const getColorThumbnail = (cName: string, fallbackIdx: number) => {
@@ -880,6 +939,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           {/* Tab 1: Description Content */}
           {activeTab === 'description' && (
             <div style={{ maxWidth: '880px', lineHeight: 1.7, color: '#374151' }}>
+              {/* Product Specifications Grid */}
               <div style={{
                 backgroundColor: '#FAFAFA',
                 padding: '24px',
@@ -889,124 +949,226 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               }}>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
                   gap: '12px 24px',
                   fontSize: '0.92rem',
                 }}>
-                  <div><strong style={{ color: '#111827' }}>Color: </strong> Beige, Black, Black and White</div>
-                  <div><strong style={{ color: '#111827' }}>Upper Material: </strong> PU Leather + Mesh Material</div>
-                  <div><strong style={{ color: '#111827' }}>Outsole Material: </strong> Rubber Foam</div>
-                  <div><strong style={{ color: '#111827' }}>Insole Material: </strong> EVA Sole</div>
-                  <div><strong style={{ color: '#111827' }}>Toe Shape: </strong> Round Head</div>
-                  <div><strong style={{ color: '#111827' }}>Closure Type: </strong> Lace Up (Quick-Tie Dial)</div>
-                  <div><strong style={{ color: '#111827' }}>Pattern Type: </strong> Solid Color</div>
-                  <div><strong style={{ color: '#111827' }}>Features: </strong> Anti-Slip, Wear-Resistant, Lightweight</div>
+                  <div>
+                    <strong style={{ color: '#111827' }}>Current Color: </strong>
+                    <span style={{ color: '#0F172A', fontWeight: 700 }}>{selectedColor}</span>
+                  </div>
+                  <div>
+                    <strong style={{ color: '#111827' }}>Available Colors: </strong>
+                    <span>{product.colors.map((c) => c.name).join(', ') || selectedColor}</span>
+                  </div>
+                  <div>
+                    <strong style={{ color: '#111827' }}>Brand Line: </strong>
+                    <span>{product.brand}</span>
+                  </div>
+                  <div>
+                    <strong style={{ color: '#111827' }}>Category & Gender: </strong>
+                    <span>{product.categoryName} • {product.gender}</span>
+                  </div>
+                  <div>
+                    <strong style={{ color: '#111827' }}>Configured Sizes: </strong>
+                    <span>{currentAvailableSizes.join(', ') || 'Standard Sizes'}</span>
+                  </div>
+                  <div>
+                    <strong style={{ color: '#111827' }}>Stock Status ({selectedColor}): </strong>
+                    <span style={{ color: currentStock > 0 ? '#15803D' : '#DC2626', fontWeight: 700 }}>
+                      {currentStock > 0 ? `${currentStock} pairs available` : 'Out of Stock in selected size'}
+                    </span>
+                  </div>
+                  {product.sku && (
+                    <div>
+                      <strong style={{ color: '#111827' }}>SKU Code: </strong>
+                      <span style={{ fontFamily: 'monospace' }}>{product.sku}</span>
+                    </div>
+                  )}
+                  {product.features && product.features.length > 0 && (
+                    <div style={{ gridColumn: '1 / -1', borderTop: '1px dashed #E5E7EB', paddingTop: '10px', marginTop: '4px' }}>
+                      <strong style={{ color: '#111827' }}>Highlights: </strong>
+                      <span>{product.features.join(' • ')}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111827', marginBottom: '10px' }}>
-                Engineered for Daily Stride & Modern Aesthetics
-              </h4>
-              <p style={{ marginBottom: '14px', fontSize: '0.92rem' }}>
-                The {product.name} seamlessly pairs high-performance cushioning with futuristic outdoor streetwear design. Featuring a durable PU leather and micro-mesh composite upper, it ensures optimum breathability during warm days while remaining resilient to everyday scuffs.
-              </p>
-              <p style={{ fontSize: '0.92rem' }}>
-                The high-rebound rubber foam outsole provides confident traction across rain-slicked tiles and rugged roads, while the anatomic EVA insole absorbs impact on every step.
-              </p>
+              {/* Colorway-Specific Description (edited by Admin per color) */}
+              {selectedColorway?.description ? (
+                <div style={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1.5px solid #E2E8F0',
+                  borderRadius: '10px',
+                  padding: '20px',
+                  marginBottom: '24px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                    <span style={{
+                      backgroundColor: '#0F172A',
+                      color: '#FFFFFF',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                    }}>
+                      {selectedColor.toUpperCase()}
+                    </span>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111827', margin: 0 }}>
+                      {selectedColor} Edition Specifications
+                    </h4>
+                  </div>
+                  <p style={{ whiteSpace: 'pre-line', fontSize: '0.92rem', color: '#374151', margin: 0, lineHeight: 1.7 }}>
+                    {selectedColorway.description}
+                  </p>
+                </div>
+              ) : null}
+
+              {/* Main Product Description */}
+              {product.description ? (
+                <div>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111827', marginBottom: '10px' }}>
+                    About {product.name}
+                  </h4>
+                  <p style={{ whiteSpace: 'pre-line', fontSize: '0.92rem', color: '#374151', lineHeight: 1.7 }}>
+                    {product.description}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111827', marginBottom: '10px' }}>
+                    {product.name}
+                  </h4>
+                  <p style={{ fontSize: '0.92rem', color: '#64748B', lineHeight: 1.7 }}>
+                    Engineered for all-day comfort, durability, and contemporary styling with premium cushioning.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Tab 2: Reviews Content */}
+          {/* Tab 2: Reviews Content - Real Verified Reviews Only */}
           {activeTab === 'reviews' && (
             <div style={{ maxWidth: '880px' }}>
-              {/* Rating summary */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '24px',
-                padding: '20px',
-                backgroundColor: '#F9FAFB',
-                borderRadius: '8px',
-                border: '1px solid #E5E7EB',
-                marginBottom: '28px',
-                flexWrap: 'wrap',
-              }}>
-                <div style={{ textAlign: 'center', minWidth: '100px' }}>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>
-                    4.9
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '3px', margin: '6px 0' }}>
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} size={16} color="#F59E0B" fill="#F59E0B" />
-                    ))}
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: '#6B7280' }}>
-                    {reviewsList.length} verified ratings
-                  </div>
+              {isLoadingReviews ? (
+                <div style={{ textAlign: 'center', padding: '36px 20px', color: '#6B7280', fontSize: '0.9rem' }}>
+                  Loading customer reviews...
                 </div>
-
-                <div style={{ flex: 1, minWidth: '220px', borderLeft: '1px solid #E5E7EB', paddingLeft: '24px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', marginBottom: '4px' }}>
-                    <span>5 stars</span>
-                    <div style={{ flex: 1, height: '8px', backgroundColor: '#E5E7EB', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ width: '92%', height: '100%', backgroundColor: '#F59E0B' }} />
+              ) : reviewsList.length > 0 ? (
+                /* Rating summary */
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '24px',
+                  padding: '20px',
+                  backgroundColor: '#F9FAFB',
+                  borderRadius: '8px',
+                  border: '1px solid #E5E7EB',
+                  marginBottom: '28px',
+                  flexWrap: 'wrap',
+                }}>
+                  <div style={{ textAlign: 'center', minWidth: '100px' }}>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>
+                      {calculatedAvgRating}
                     </div>
-                    <span>92%</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem' }}>
-                    <span>4 stars</span>
-                    <div style={{ flex: 1, height: '8px', backgroundColor: '#E5E7EB', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ width: '8%', height: '100%', backgroundColor: '#F59E0B' }} />
-                    </div>
-                    <span>8%</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Reviews List */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
-                {reviewsList.map((rev) => (
-                  <div
-                    key={rev.id}
-                    style={{
-                      borderBottom: '1px solid #F3F4F6',
-                      paddingBottom: '16px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <strong style={{ fontSize: '0.92rem', color: '#111827' }}>{rev.author}</strong>
-                        {rev.verified && (
-                          <span style={{
-                            fontSize: '0.72rem',
-                            color: '#16A34A',
-                            backgroundColor: '#DCFCE7',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            fontWeight: 600,
-                          }}>
-                            Verified Buyer
-                          </span>
-                        )}
-                      </div>
-                      <span style={{ fontSize: '0.78rem', color: '#9CA3AF' }}>{rev.date}</span>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '2px', marginBottom: '6px' }}>
-                      {[...Array(rev.rating)].map((_, i) => (
-                        <Star key={i} size={14} color="#F59E0B" fill="#F59E0B" />
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '3px', margin: '6px 0' }}>
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          size={16}
+                          color="#F59E0B"
+                          fill={s <= Math.round(Number(calculatedAvgRating) || 5) ? '#F59E0B' : 'none'}
+                        />
                       ))}
                     </div>
-
-                    <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#111827', marginBottom: '4px' }}>
-                      {rev.title}
+                    <div style={{ fontSize: '0.78rem', color: '#6B7280' }}>
+                      {reviewsList.length} verified {reviewsList.length === 1 ? 'rating' : 'ratings'}
                     </div>
-                    <p style={{ fontSize: '0.88rem', color: '#4B5563', lineHeight: 1.5 }}>
-                      {rev.comment}
-                    </p>
                   </div>
-                ))}
-              </div>
+
+                  <div style={{ flex: 1, minWidth: '220px', borderLeft: '1px solid #E5E7EB', paddingLeft: '24px' }}>
+                    {starBreakdown.map((sb) => (
+                      <div key={sb.star} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', marginBottom: '4px' }}>
+                        <span style={{ width: '48px', color: '#4B5563' }}>{sb.star} stars</span>
+                        <div style={{ flex: 1, height: '8px', backgroundColor: '#E5E7EB', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${sb.pct}%`, height: '100%', backgroundColor: '#F59E0B' }} />
+                        </div>
+                        <span style={{ width: '36px', textAlign: 'right', color: '#6B7280', fontSize: '0.76rem' }}>
+                          {sb.pct}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* Honest Empty State when no real reviews are available */
+                <div style={{
+                  padding: '40px 20px',
+                  backgroundColor: '#F9FAFB',
+                  borderRadius: '8px',
+                  border: '1.5px dashed #D1D5DB',
+                  textAlign: 'center',
+                  marginBottom: '28px',
+                }}>
+                  <Star size={36} color="#9CA3AF" style={{ margin: '0 auto 10px auto' }} />
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111827', marginBottom: '6px' }}>
+                    No Customer Reviews Yet
+                  </h4>
+                  <p style={{ fontSize: '0.85rem', color: '#6B7280', maxWidth: '440px', margin: '0 auto' }}>
+                    This footwear does not have any customer reviews yet. Have you worn or tried this pair? Be the first to share your authentic experience!
+                  </p>
+                </div>
+              )}
+
+              {/* Reviews List */}
+              {reviewsList.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '36px' }}>
+                  {reviewsList.map((rev) => (
+                    <div
+                      key={rev.id}
+                      style={{
+                        borderBottom: '1px solid #F3F4F6',
+                        paddingBottom: '16px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <strong style={{ fontSize: '0.92rem', color: '#111827' }}>{rev.author}</strong>
+                          {rev.verified && (
+                            <span style={{
+                              fontSize: '0.72rem',
+                              color: '#16A34A',
+                              backgroundColor: '#DCFCE7',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontWeight: 600,
+                            }}>
+                              Verified Buyer
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '0.78rem', color: '#9CA3AF' }}>{rev.date}</span>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '2px', marginBottom: '6px' }}>
+                        {[...Array(rev.rating)].map((_, i) => (
+                          <Star key={i} size={14} color="#F59E0B" fill="#F59E0B" />
+                        ))}
+                      </div>
+
+                      {rev.title && (
+                        <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#111827', marginBottom: '4px' }}>
+                          {rev.title}
+                        </div>
+                      )}
+                      <p style={{ fontSize: '0.88rem', color: '#4B5563', lineHeight: 1.5, margin: 0 }}>
+                        {rev.comment}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Submit Review Form */}
               <div style={{

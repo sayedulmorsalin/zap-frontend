@@ -28,6 +28,18 @@ export interface ColorVariantGroup {
     size: string;
     stock: number;
   }>;
+  description?: string;
+}
+
+export interface ProductReview {
+  id: string;
+  author: string;
+  location?: string;
+  rating: number;
+  date: string;
+  verified?: boolean;
+  title?: string;
+  comment: string;
 }
 
 export interface Product {

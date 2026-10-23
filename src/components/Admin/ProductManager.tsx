@@ -21,7 +21,8 @@ import {
   Check,
   Package,
   Layers,
-  Sparkles
+  Sparkles,
+  FileText
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { Product, Gender, ShoeCategory, ProductVariant, ColorVariantGroup } from '../../types/product';
@@ -36,6 +37,7 @@ export interface ColorwayItem {
     size: string;
     stock: number;
   }>;
+  description?: string;
 }
 
 export const PRESET_COLORS = [
@@ -132,6 +134,7 @@ export const ProductManager: React.FC = () => {
           { size: '43', stock: 10 },
           { size: '44', stock: 5 },
         ],
+        description: '',
       },
     ]);
     setUploadError(null);
@@ -166,6 +169,7 @@ export const ProductManager: React.FC = () => {
           colorHex: cv.colorHex || '#09090B',
           images: cv.images || [],
           sizes: cv.sizes.map((s) => ({ size: String(s.size), stock: Number(s.stock) || 0 })),
+          description: cv.description || '',
         }))
       );
     } else if (product.variants && product.variants.length > 0) {
@@ -243,6 +247,7 @@ export const ProductManager: React.FC = () => {
         colorHex: preset.hex,
         images: [],
         sizes: defaultSizes,
+        description: '',
       },
     ]);
   };
@@ -421,6 +426,7 @@ export const ProductManager: React.FC = () => {
         size: String(s.size).trim(),
         stock: Math.max(0, Number(s.stock) || 0),
       })),
+      description: cw.description?.trim() || undefined,
     }));
 
     const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
@@ -1758,6 +1764,27 @@ export const ProductManager: React.FC = () => {
                             })}
                           </div>
                         )}
+                      </div>
+
+                      {/* Description for this specific color */}
+                      <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '12px', marginTop: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <FileText size={14} color="#D32F2F" />
+                            <span>Description & Specifications for {cw.color || 'this color'} (Optional)</span>
+                          </label>
+                          <span style={{ fontSize: '0.7rem', color: '#64748B' }}>
+                            Displayed when shopper selects {cw.color || 'this color'}
+                          </span>
+                        </div>
+                        <textarea
+                          rows={2}
+                          placeholder={`e.g. ${cw.color || 'This color'} edition crafted with premium upper material, moisture-wicking lining, and durable rubber foam sole...`}
+                          value={cw.description || ''}
+                          onChange={(e) => handleUpdateColorway(cw.id, { description: e.target.value })}
+                          className="admin-input"
+                          style={{ fontSize: '0.8rem', resize: 'vertical', width: '100%' }}
+                        />
                       </div>
                     </div>
                   );
