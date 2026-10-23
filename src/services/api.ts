@@ -503,7 +503,7 @@ export async function createApiOrder(orderData: {
  */
 async function resilientApiFetch(
   endpoint: string,
-  options: RequestInit
+  options: RequestInit = {}
 ): Promise<{ ok: boolean; status: number; data?: unknown; message?: string }> {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const directUrl = `${API_BASE}${cleanEndpoint}`;
@@ -789,7 +789,9 @@ export async function updateApiProduct(id: string, product: Partial<Product>): P
  */
 export async function fetchProductReviews(productId: string): Promise<{ success: boolean; data?: any[]; avgRating?: number; total?: number; message?: string }> {
   try {
-    const res = await resilientApiFetch(`/api/reviews?productId=${encodeURIComponent(productId)}`);
+    const res = await resilientApiFetch(`/api/reviews?productId=${encodeURIComponent(productId)}`, {
+      method: 'GET',
+    });
     if (res.ok && res.data) {
       const payloadData = res.data as { items?: any[]; data?: any[]; avgRating?: number; total?: number };
       const items = Array.isArray(res.data) 
