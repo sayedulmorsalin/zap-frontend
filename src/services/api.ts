@@ -142,9 +142,10 @@ export function transformBackendProduct(bp: RawBackendProduct): Product {
     }
   }
 
-  // Parse per-color descriptions if encoded in description
+  // Parse per-color descriptions and features if encoded in description
   let parsedDescription = bp.description || '';
   let colorDescriptions: Record<string, string> = {};
+  let parsedFeatures: string[] = [];
   if (bp.description && typeof bp.description === 'string' && bp.description.trim().startsWith('{')) {
     try {
       const parsed = JSON.parse(bp.description);
@@ -152,6 +153,9 @@ export function transformBackendProduct(bp: RawBackendProduct): Product {
         if ('main' in parsed) parsedDescription = parsed.main || '';
         if ('colors' in parsed && typeof parsed.colors === 'object') {
           colorDescriptions = parsed.colors;
+        }
+        if ('features' in parsed && Array.isArray(parsed.features)) {
+          parsedFeatures = parsed.features;
         }
       }
     } catch {
@@ -214,12 +218,14 @@ export function transformBackendProduct(bp: RawBackendProduct): Product {
     rating: bp.rating ? Number(bp.rating) : 0,
     reviewCount: bp._count?.reviews || bp.reviewCount || 0,
     description: parsedDescription,
-    features: bp.features || [
-      'High-grade premium materials',
-      'Ergonomic shock-absorbing insole',
-      'Durable non-slip rubber outsole',
-      'Breathable interior lining',
-    ],
+    features: parsedFeatures.length > 0 ? parsedFeatures : (bp.features && bp.features.length > 0 ? bp.features : [
+      '⚡ LEVEL UP YOUR SHOE COLLECTION!',
+      '🚚 Pre-order delivery in 20–25 days ( 2-3 days if in stock)',
+      '🎁 Extra 10% coupon after first delivery (SMS)',
+      '🌐 High-quality imported shoes',
+      '💎 Handpicked for quality, comfort & durability',
+      '🔮 Perfect for bold, modern style-lovers',
+    ]),
     images,
     sizes: variantSizes,
     colors: variantColors,
@@ -640,12 +646,13 @@ export async function createApiProduct(product: Product): Promise<{ success: boo
     const cleanCategorySlug = (product.category || 'formal').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
     const cleanBrandSlug = (product.brandSlug || (product.brand ? product.brand.toLowerCase().replace(/[^a-z0-9-]+/g, '-') : 'zap-signature'));
 
-    // Encode per-color descriptions if configured
+    // Encode per-color descriptions and custom features if configured
     let finalDescription = product.description || '';
     const hasColorDescriptions = product.colorVariants?.some(
       (cv) => cv.description && cv.description.trim().length > 0
     );
-    if (hasColorDescriptions) {
+    const hasFeatures = product.features !== undefined;
+    if (hasColorDescriptions || hasFeatures) {
       const colorMap: Record<string, string> = {};
       product.colorVariants?.forEach((cv) => {
         if (cv.description && cv.description.trim().length > 0) {
@@ -655,6 +662,7 @@ export async function createApiProduct(product: Product): Promise<{ success: boo
       finalDescription = JSON.stringify({
         main: product.description || '',
         colors: colorMap,
+        features: product.features || [],
       });
     }
 
@@ -711,11 +719,12 @@ export async function updateApiProduct(id: string, product: Partial<Product>): P
     if (product.slug) payload.slug = product.slug;
     if (product.sku) payload.sku = product.sku;
 
-    if (product.description !== undefined || product.colorVariants !== undefined) {
+    if (product.description !== undefined || product.colorVariants !== undefined || product.features !== undefined) {
       const hasColorDescriptions = product.colorVariants?.some(
         (cv) => cv.description && cv.description.trim().length > 0
       );
-      if (hasColorDescriptions) {
+      const hasFeatures = product.features !== undefined;
+      if (hasColorDescriptions || hasFeatures) {
         const colorMap: Record<string, string> = {};
         product.colorVariants?.forEach((cv) => {
           if (cv.description && cv.description.trim().length > 0) {
@@ -725,6 +734,7 @@ export async function updateApiProduct(id: string, product: Partial<Product>): P
         payload.description = JSON.stringify({
           main: product.description || '',
           colors: colorMap,
+          features: product.features || [],
         });
       } else if (product.description !== undefined) {
         payload.description = product.description;

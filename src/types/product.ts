@@ -61,7 +61,7 @@ export interface Product {
   rating: number;
   reviewCount: number;
   description: string;
-  features: string[];
+  features?: string[];
   images: string[];
   sizes: string[];
   colors: { name: string; hex: string; images?: string[] }[];

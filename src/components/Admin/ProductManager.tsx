@@ -53,6 +53,15 @@ export const PRESET_COLORS = [
 
 export const STANDARD_SHOE_SIZES = ['38', '39', '40', '41', '42', '43', '44', '45', '46'];
 
+export const DEFAULT_STOREFRONT_BULLETS = [
+  '⚡ LEVEL UP YOUR SHOE COLLECTION!',
+  '🚚 Pre-order delivery in 20–25 days ( 2-3 days if in stock)',
+  '🎁 Extra 10% coupon after first delivery (SMS)',
+  '🌐 High-quality imported shoes',
+  '💎 Handpicked for quality, comfort & durability',
+  '🔮 Perfect for bold, modern style-lovers',
+];
+
 export const ProductManager: React.FC = () => {
   const { products, addProduct, updateProduct, deleteProduct, brands } = useShop();
 
@@ -87,6 +96,7 @@ export const ProductManager: React.FC = () => {
     regularPrice: 0,
     sku: '',
     description: '',
+    featuresText: DEFAULT_STOREFRONT_BULLETS.join('\n'),
     inStock: true,
     isFeatured: false,
     isNewArrival: true,
@@ -116,6 +126,7 @@ export const ProductManager: React.FC = () => {
       regularPrice: 0,
       sku: `ZAP-${Math.floor(1000 + Math.random() * 9000)}`,
       description: '',
+      featuresText: DEFAULT_STOREFRONT_BULLETS.join('\n'),
       inStock: true,
       isFeatured: false,
       isNewArrival: true,
@@ -146,6 +157,10 @@ export const ProductManager: React.FC = () => {
 
   const handleOpenEdit = (product: Product) => {
     setEditingProduct(product);
+    const bullets = (product.features && product.features.length > 0)
+      ? product.features
+      : DEFAULT_STOREFRONT_BULLETS;
+
     setFormData({
       name: product.name,
       brand: product.brand,
@@ -156,6 +171,7 @@ export const ProductManager: React.FC = () => {
       regularPrice: product.regularPrice,
       sku: product.sku,
       description: product.description,
+      featuresText: bullets.join('\n'),
       inStock: product.inStock,
       isFeatured: !!product.isFeatured,
       isNewArrival: !!product.isNewArrival,
@@ -436,6 +452,11 @@ export const ProductManager: React.FC = () => {
       ((formData.regularPrice - formData.price) / formData.regularPrice) * 100
     );
 
+    const parsedFeatures = formData.featuresText
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
     if (editingProduct) {
       const updated: Product = {
         ...editingProduct,
@@ -449,6 +470,7 @@ export const ProductManager: React.FC = () => {
         discountPercentage: discountPercentage > 0 ? discountPercentage : undefined,
         sku: formData.sku,
         description: formData.description,
+        features: parsedFeatures,
         inStock: finalInStock,
         isFeatured: formData.isFeatured,
         isNewArrival: formData.isNewArrival,
@@ -479,11 +501,7 @@ export const ProductManager: React.FC = () => {
         rating: 4.8,
         reviewCount: 1,
         description: formData.description,
-        features: [
-          'Genuine artisan finish',
-          'Comfort ergonomic footbed',
-          'High abrasion non-slip outsole',
-        ],
+        features: parsedFeatures.length > 0 ? parsedFeatures : DEFAULT_STOREFRONT_BULLETS,
         images: finalImages,
         sizes: finalSizes,
         colors: finalColors,
@@ -1030,7 +1048,7 @@ export const ProductManager: React.FC = () => {
               {/* Product Description */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
-                  Product Description
+                  1st Description: General Product Overview (Shown in Description Tab)
                 </label>
                 <textarea
                   rows={3}
@@ -1040,6 +1058,35 @@ export const ProductManager: React.FC = () => {
                   className="admin-input"
                   style={{ resize: 'vertical' }}
                 />
+              </div>
+
+              {/* Storefront Highlights & Bullet Points (Shown under price on website) */}
+              <div style={{
+                backgroundColor: '#F8FAFC',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: '8px',
+                padding: '14px',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={15} color="#D32F2F" />
+                    <span>Storefront Bullet Points & Highlights (Shown directly under price on website)</span>
+                  </label>
+                  <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>
+                    1 bullet per line • Emojis supported
+                  </span>
+                </div>
+                <textarea
+                  rows={6}
+                  placeholder={`⚡ LEVEL UP YOUR SHOE COLLECTION!\n🚚 Pre-order delivery in 20–25 days ( 2-3 days if in stock)\n🎁 Extra 10% coupon after first delivery (SMS)\n🌐 High-quality imported shoes\n💎 Handpicked for quality, comfort & durability\n🔮 Perfect for bold, modern style-lovers`}
+                  value={formData.featuresText}
+                  onChange={(e) => setFormData({ ...formData, featuresText: e.target.value })}
+                  className="admin-input"
+                  style={{ resize: 'vertical', width: '100%', backgroundColor: '#FFFFFF', fontSize: '0.84rem', lineHeight: 1.6 }}
+                />
+                <p style={{ fontSize: '0.72rem', color: '#64748B', margin: '6px 0 0 0' }}>
+                  💡 These bullet points appear directly below the price on the product page. You can customize the delivery terms, discounts, guarantees, or style highlights for this shoe.
+                </p>
               </div>
 
               {/* ─── COLORWAYS, PHOTOS & SIZE-WISE STOCK INVENTORY ─── */}

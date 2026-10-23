@@ -14,8 +14,8 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const router = useRouter();
   const { addToCart, toggleWishlist, isWishlisted, setQuickViewProduct, setIsCartOpen } = useShop();
-  const [selectedSize, setSelectedSize] = useState<string>(product.sizes[0] || '41');
-  const [selectedColor, setSelectedColor] = useState<string>(product.colors[0]?.name || 'Standard');
+  const [selectedSize, setSelectedSize] = useState<string>((product.sizes && product.sizes[0]) || '41');
+  const [selectedColor, setSelectedColor] = useState<string>((product.colors && product.colors[0]?.name) || 'Standard');
   const [isHovered, setIsHovered] = useState(false);
 
   const wishlisted = isWishlisted(product.id);
@@ -285,7 +285,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             gap: '6px',
             flexWrap: 'wrap',
           }}>
-            {product.sizes.slice(0, 5).map((sz) => {
+            {(product.sizes || []).slice(0, 5).map((sz) => {
               let szStock = 10;
               if (selectedColorway && selectedColorway.sizes.length > 0) {
                 const sObj = selectedColorway.sizes.find((s) => s.size === sz);
@@ -327,11 +327,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </div>
 
         {/* Color Swatch Dots */}
-        {product.colors.length > 1 && (
+        {(product.colors || []).length > 1 && (
           <div className="product-card-colors" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
             <span className="product-card-colors-label" style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>COLOR:</span>
             <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-              {product.colors.map((c) => (
+              {(product.colors || []).map((c) => (
                 <button
                   key={c.name}
                   onClick={(e) => {

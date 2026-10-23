@@ -38,7 +38,7 @@ export const QuickViewModal: React.FC = () => {
   const wishlisted = isWishlisted(product.id);
 
   // Determine active color
-  const currentColor = selectedColor || product.colors[0]?.name || product.colorVariants?.[0]?.color || 'Standard';
+  const currentColor = selectedColor || product.colors?.[0]?.name || product.colorVariants?.[0]?.color || 'Standard';
 
   // Find colorway group matching active color
   const selectedColorway = product.colorVariants?.find(
@@ -48,7 +48,7 @@ export const QuickViewModal: React.FC = () => {
   // Images for this colorway or fallback to general product images
   const activeImages = (selectedColorway && selectedColorway.images && selectedColorway.images.length > 0)
     ? selectedColorway.images
-    : product.images;
+    : (product.images || []);
 
   // Build size -> stock map for selected color
   const sizeStockMap: { [size: string]: number } = {};
@@ -63,7 +63,7 @@ export const QuickViewModal: React.FC = () => {
         sizeStockMap[v.size] = typeof v.stock === 'number' ? v.stock : Number(v.stock) || 0;
       });
   } else {
-    product.sizes.forEach((sz) => {
+    (product.sizes || []).forEach((sz) => {
       sizeStockMap[sz] = 10;
     });
   }
@@ -71,7 +71,7 @@ export const QuickViewModal: React.FC = () => {
   // Determine available sizes for this colorway
   const availableSizes = selectedColorway && selectedColorway.sizes.length > 0
     ? selectedColorway.sizes.map((s) => s.size)
-    : product.sizes;
+    : (product.sizes || []);
 
   const currentSize = selectedSize && availableSizes.includes(selectedSize)
     ? selectedSize

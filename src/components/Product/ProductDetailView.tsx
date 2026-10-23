@@ -32,6 +32,15 @@ import { COLOR_IMAGE_MAP } from '../../data/anchorCrest';
 import { ProductReview } from '../../types/product';
 import { fetchProductReviews, submitProductReview } from '../../services/api';
 
+export const DEFAULT_STOREFRONT_BULLETS = [
+  '⚡ LEVEL UP YOUR SHOE COLLECTION!',
+  '🚚 Pre-order delivery in 20–25 days ( 2-3 days if in stock)',
+  '🎁 Extra 10% coupon after first delivery (SMS)',
+  '🌐 High-quality imported shoes',
+  '💎 Handpicked for quality, comfort & durability',
+  '🔮 Perfect for bold, modern style-lovers',
+];
+
 interface ProductDetailViewProps {
   initialProduct: Product;
   relatedProducts?: Product[];
@@ -55,6 +64,11 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
   const product = initialProduct;
   const wishlisted = isWishlisted(product.id);
+
+  // Storefront bullet highlights (admin-editable)
+  const storefrontBullets = (product.features && product.features.length > 0)
+    ? product.features
+    : DEFAULT_STOREFRONT_BULLETS;
 
   // Default color and size resolution
   const defaultColor = product.colors?.[0]?.name || product.colorVariants?.[0]?.color || 'Classic Black';
@@ -298,11 +312,11 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     const cv = product.colorVariants?.find((c) => c.color.toLowerCase() === cName.toLowerCase());
     if (cv && cv.images && cv.images.length > 0) return cv.images[0];
 
-    const cObj = product.colors.find((c) => c.name.toLowerCase() === cName.toLowerCase());
+    const cObj = (product.colors || []).find((c) => c.name.toLowerCase() === cName.toLowerCase());
     if (cObj && cObj.images && cObj.images.length > 0) return cObj.images[0];
 
     if (COLOR_IMAGE_MAP[cName]) return COLOR_IMAGE_MAP[cName];
-    return product.images[fallbackIdx] || product.images[0];
+    return (product.images || [])[fallbackIdx] || (product.images || [])[0] || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80';
   };
 
   return (
@@ -518,41 +532,61 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               )}
             </div>
 
-            {/* Trust and Feature Bullets with Emojis */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '9px',
-              fontSize: '0.92rem',
-              lineHeight: 1.5,
-              color: '#374151',
-              marginBottom: '24px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>⚡</span>
-                <span style={{ fontWeight: 600 }}>LEVEL UP YOUR SHOE COLLECTION!</span>
+            {/* Storefront Highlights and Bullet Points (Editable by Admin) */}
+            {storefrontBullets.length > 0 && (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '9px',
+                fontSize: '0.92rem',
+                lineHeight: 1.5,
+                color: '#374151',
+                marginBottom: '24px',
+              }}>
+                {storefrontBullets.map((bullet, idx) => {
+                  const line = bullet.trim();
+                  if (!line) return null;
+
+                  // Extract leading emoji or symbol if present (fully ES2017 safe)
+                  let icon = '•';
+                  let text = line;
+                  const firstSpaceIdx = line.indexOf(' ');
+                  if (firstSpaceIdx > 0 && firstSpaceIdx <= 4) {
+                    const candidate = line.slice(0, firstSpaceIdx).trim();
+                    if (candidate.length > 0 && !/^[a-zA-Z0-9]+$/.test(candidate)) {
+                      icon = candidate;
+                      text = line.slice(firstSpaceIdx + 1).trim();
+                    }
+                  } else if (/^[⚡🚚🎁🌐💎🔮✨🔥✓✔★•●]/.test(line)) {
+                    icon = line.slice(0, 1);
+                    text = line.slice(1).trim();
+                  }
+
+                  const hasCustomIcon = icon !== '•';
+                  const isEmphasized = idx === 0 && (text.includes('!') || line.includes('!'));
+
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        fontSize: hasCustomIcon ? '1rem' : '0.9rem',
+                        lineHeight: 1,
+                        flexShrink: 0,
+                        color: hasCustomIcon ? undefined : '#D32F2F',
+                        fontWeight: hasCustomIcon ? 400 : 700,
+                      }}>
+                        {icon}
+                      </span>
+                      <span style={{
+                        fontWeight: isEmphasized ? 600 : 400,
+                        color: isEmphasized ? '#111827' : '#374151',
+                      }}>
+                        {text || line}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>🚚</span>
-                <span>Pre-order delivery in 20–25 days ( 2-3 days if in stock)</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>🎁</span>
-                <span>Extra 10% coupon after first delivery (SMS)</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>🌐</span>
-                <span>High-quality imported shoes</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>💎</span>
-                <span>Handpicked for quality, comfort & durability</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>🔮</span>
-                <span>Perfect for bold, modern style-lovers</span>
-              </div>
-            </div>
+            )}
 
             <hr style={{ border: 'none', borderTop: '1px solid #E5E7EB', marginBottom: '22px' }} />
 
@@ -569,7 +603,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
               {/* Color Thumbnails */}
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                {product.colors.map((c, idx) => {
+                {(product.colors || []).map((c, idx) => {
                   const thumb = getColorThumbnail(c.name, idx);
                   const isSelected = selectedColor === c.name;
                   return (
@@ -959,7 +993,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   </div>
                   <div>
                     <strong style={{ color: '#111827' }}>Available Colors: </strong>
-                    <span>{product.colors.map((c) => c.name).join(', ') || selectedColor}</span>
+                    <span>{(product.colors || []).map((c) => c.name).join(', ') || selectedColor}</span>
                   </div>
                   <div>
                     <strong style={{ color: '#111827' }}>Brand Line: </strong>
