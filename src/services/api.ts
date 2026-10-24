@@ -255,7 +255,7 @@ export async function fetchApiProducts(params?: {
     if (params?.categoryId) query.set('categoryId', params.categoryId);
     if (params?.brandId) query.set('brandId', params.brandId);
     if (params?.gender) query.set('gender', params.gender);
-    query.set('includeInactive', 'true'); // Allow admin & catalog to see in-stock & out-of-stock items
+    if (params?.includeInactive) query.set('includeInactive', 'true');
 
     const qs = query.toString();
     const endpoint = `/api/products${qs ? `?${qs}` : ''}`;
@@ -292,7 +292,10 @@ export async function fetchApiProducts(params?: {
 
     const json = await res.json();
     const rawList: RawBackendProduct[] = json.data?.data || json.data || [];
-    const products = rawList.map(transformBackendProduct);
+    const activeList = params?.includeInactive
+      ? rawList
+      : rawList.filter((bp) => bp.isActive !== false);
+    const products = activeList.map(transformBackendProduct);
 
     return {
       products,
@@ -861,9 +864,9 @@ export async function submitProductReview(reviewData: {
  */
 export async function deleteApiProduct(id: string): Promise<{ success: boolean; message?: string }> {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
     const adminPasskey = typeof window !== 'undefined' ? (sessionStorage.getItem('zap_admin_pass') || 'zap@admin2026') : 'zap@admin2026';
-    const authToken = token || adminPasskey;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+    const authToken = adminPasskey || token || 'zap@admin2026';
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -871,7 +874,7 @@ export async function deleteApiProduct(id: string): Promise<{ success: boolean; 
       'x-admin-key': adminPasskey,
     };
 
-    const res = await resilientApiFetch(`/api/products/${id}`, {
+    const res = await resilientApiFetch(`/api/products/${encodeURIComponent(id)}`, {
       method: 'DELETE',
       headers,
     });

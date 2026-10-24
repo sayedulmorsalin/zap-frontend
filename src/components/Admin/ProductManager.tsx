@@ -74,6 +74,7 @@ export const ProductManager: React.FC = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // SeaweedFS Upload State
   const [uploadingColorwayId, setUploadingColorwayId] = useState<string | null>(null);
@@ -1941,19 +1942,30 @@ export const ProductManager: React.FC = () => {
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
-                onClick={() => setDeletingProductId(null)}
+                onClick={() => {
+                  if (!isDeleting) setDeletingProductId(null);
+                }}
+                disabled={isDeleting}
                 className="btn btn-secondary btn-sm"
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  deleteProduct(deletingProductId);
-                  setDeletingProductId(null);
+                onClick={async () => {
+                  if (!deletingProductId || isDeleting) return;
+                  setIsDeleting(true);
+                  try {
+                    await deleteProduct(deletingProductId);
+                  } finally {
+                    setIsDeleting(false);
+                    setDeletingProductId(null);
+                  }
                 }}
+                disabled={isDeleting}
                 className="btn btn-primary btn-sm"
+                style={{ opacity: isDeleting ? 0.7 : 1 }}
               >
-                Confirm Delete
+                {isDeleting ? 'Deleting from Database...' : 'Confirm Delete'}
               </button>
             </div>
           </div>

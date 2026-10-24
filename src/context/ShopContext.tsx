@@ -49,7 +49,7 @@ interface ShopContextType {
   products: Product[];
   addProduct: (product: Product) => void;
   updateProduct: (product: Product) => void;
-  deleteProduct: (productId: string) => void;
+  deleteProduct: (productId: string) => Promise<boolean | void> | void;
   brands: BrandInfo[];
   addBrand: (brand: BrandInfo) => void;
   updateBrand: (brand: BrandInfo) => void;
@@ -481,18 +481,37 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
   };
 
-  const deleteProduct = (productId: string) => {
+  const deleteProduct = async (productId: string) => {
+    const productToDelete = products.find((p) => p.id === productId);
+    // Optimistic removal from active catalog
     setProducts((prev) => prev.filter((p) => p.id !== productId));
-    showToast('Product removed from catalog.');
-    deleteApiProduct(productId)
-      .then((res) => {
-        if (!res.success) {
-          console.warn('Backend product deletion warning:', res.message);
+    // Clean up cart and wishlist if item was stored
+    setCart((prev) => prev.filter((item) => item.product.id !== productId));
+    setWishlist((prev) => prev.filter((id) => id !== productId));
+    showToast('Deleting product from database...');
+
+    try {
+      const res = await deleteApiProduct(productId);
+      if (res.success) {
+        showToast('Product successfully deleted from catalog.');
+        return true;
+      } else {
+        console.warn('Backend product deletion warning:', res.message);
+        showToast(`Failed to delete product: ${res.message || 'Server error'}`);
+        // Revert local state if server deletion failed
+        if (productToDelete) {
+          setProducts((prev) => [productToDelete, ...prev.filter((p) => p.id !== productId)]);
         }
-      })
-      .catch((err) => {
-        console.error('Failed to sync deleted product with PostgreSQL:', err);
-      });
+        return false;
+      }
+    } catch (err) {
+      console.error('Failed to sync deleted product with PostgreSQL:', err);
+      showToast('Error syncing product deletion with database.');
+      if (productToDelete) {
+        setProducts((prev) => [productToDelete, ...prev.filter((p) => p.id !== productId)]);
+      }
+      return false;
+    }
   };
 
   // ── Brands CRUD ──
