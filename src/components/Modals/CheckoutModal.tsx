@@ -24,19 +24,26 @@ export const CheckoutModal: React.FC = () => {
     clearCart,
     showToast,
     addOrder,
+    deliveryLocation,
+    setDeliveryLocation,
+    deliveryFeeInsideDhaka,
+    deliveryFeeOutsideDhaka,
+    storeSettings,
   } = useShop();
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [division, setDivision] = useState('Dhaka');
+  const [division, setDivision] = useState(deliveryLocation === 'outside_dhaka' ? 'Chittagong' : 'Dhaka');
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bkash' | 'card'>('cod');
   const [isSuccess, setIsSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
 
   if (!isCheckoutOpen) return null;
 
-  const deliveryFee = cartSubtotal >= freeShippingThreshold || cart.length === 0 ? 0 : 100;
+  const isInsideDhaka = division === 'Dhaka' || deliveryLocation === 'inside_dhaka';
+  const baseDeliveryFee = isInsideDhaka ? deliveryFeeInsideDhaka : deliveryFeeOutsideDhaka;
+  const deliveryFee = cartSubtotal >= freeShippingThreshold || cart.length === 0 ? 0 : baseDeliveryFee;
   const finalTotal = Math.max(0, cartSubtotal + deliveryFee - discountAmount);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -76,7 +83,7 @@ export const CheckoutModal: React.FC = () => {
       updatedAt: new Date().toISOString(),
       courierName: 'Steadfast Express',
       trackingNumber: `SF-BD-${Math.floor(1000000 + Math.random() * 9000000)}`,
-      estimatedDelivery: '3 - 5 Business Days',
+      estimatedDelivery: isInsideDhaka ? '24 - 48 Hours' : '2 - 4 Business Days',
       notes: `Order placed online via ZAP Storefront with ${paymentMethod.toUpperCase()}`,
     };
 
@@ -156,7 +163,7 @@ export const CheckoutModal: React.FC = () => {
             </h2>
 
             <p style={{ color: '#64748B', fontSize: '0.95rem', marginBottom: '24px' }}>
-              Your order has been placed successfully and sent to our central Tongi warehouse for dispatch.
+              Your order has been placed successfully and sent to our {storeSettings?.centralWarehouse ? storeSettings.centralWarehouse.split(',')[0] : 'central fulfillment hub'} for dispatch.
             </p>
 
             <div style={{
@@ -276,17 +283,21 @@ export const CheckoutModal: React.FC = () => {
                       <label style={labelStyle}>DIVISION / REGION *</label>
                       <select
                         value={division}
-                        onChange={(e) => setDivision(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDivision(val);
+                          setDeliveryLocation(val === 'Dhaka' ? 'inside_dhaka' : 'outside_dhaka');
+                        }}
                         style={inputStyle}
                       >
-                        <option value="Dhaka">Dhaka (24-48h Delivery)</option>
-                        <option value="Chittagong">Chittagong (2-3 Days)</option>
-                        <option value="Sylhet">Sylhet (2-3 Days)</option>
-                        <option value="Rajshahi">Rajshahi (3-4 Days)</option>
-                        <option value="Khulna">Khulna (3-4 Days)</option>
-                        <option value="Barisal">Barisal (3-4 Days)</option>
-                        <option value="Rangpur">Rangpur (3-4 Days)</option>
-                        <option value="Mymensingh">Mymensingh (2-3 Days)</option>
+                        <option value="Dhaka">Dhaka (Inside Dhaka • ৳{deliveryFeeInsideDhaka})</option>
+                        <option value="Chittagong">Chittagong (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                        <option value="Sylhet">Sylhet (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                        <option value="Rajshahi">Rajshahi (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                        <option value="Khulna">Khulna (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                        <option value="Barisal">Barisal (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                        <option value="Rangpur">Rangpur (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                        <option value="Mymensingh">Mymensingh (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
                       </select>
                     </div>
 
@@ -413,7 +424,7 @@ export const CheckoutModal: React.FC = () => {
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
-                    <span style={{ color: '#64748B' }}>Nationwide Delivery:</span>
+                    <span style={{ color: '#64748B' }}>Delivery ({isInsideDhaka ? 'Inside Dhaka' : 'Outside Dhaka'}):</span>
                     <span>{deliveryFee === 0 ? <strong style={{ color: '#15803D' }}>FREE</strong> : `Tk ${deliveryFee}`}</span>
                   </div>
 

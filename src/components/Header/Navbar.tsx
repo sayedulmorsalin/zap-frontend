@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { 
   Search, 
   ShoppingBag, 
@@ -14,9 +15,11 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
+import { FormattedText, stripHtml } from '../Common/FormattedText';
 
 export const Navbar: React.FC = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const {
     cartCount,
     cartSubtotal,
@@ -38,12 +41,16 @@ export const Navbar: React.FC = () => {
   const [isBrandsDropdownOpen, setIsBrandsDropdownOpen] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const brandsRef = useRef<HTMLDivElement>(null);
 
-  // Close search dropdown when clicking outside
+  // Close search and brands dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setIsSearchActive(false);
+      }
+      if (brandsRef.current && !brandsRef.current.contains(e.target as Node)) {
+        setIsBrandsDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -56,17 +63,30 @@ export const Navbar: React.FC = () => {
     p.categoryName.toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 5);
 
+  const navigateToCatalog = () => {
+    if (pathname === '/') {
+      const catalogElem = document.getElementById('product-catalog');
+      if (catalogElem) {
+        catalogElem.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      router.push('/#product-catalog');
+      setTimeout(() => {
+        const catalogElem = document.getElementById('product-catalog');
+        if (catalogElem) {
+          catalogElem.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 250);
+    }
+  };
+
   const handleBrandClick = (slug: string) => {
     setSelectedBrand(slug);
     setSelectedCategory('all');
+    setSelectedGender('ALL');
     setIsBrandsDropdownOpen(false);
     setIsMobileMenuOpen(false);
-
-    // Smooth scroll to catalog
-    const catalogElem = document.getElementById('product-catalog');
-    if (catalogElem) {
-      catalogElem.scrollIntoView({ behavior: 'smooth' });
-    }
+    navigateToCatalog();
   };
 
   const handleGenderClick = (gender: 'MEN' | 'WOMEN' | 'KIDS') => {
@@ -74,13 +94,17 @@ export const Navbar: React.FC = () => {
     setSelectedBrand('all');
     setSelectedCategory('all');
     setIsMobileMenuOpen(false);
-
-    const catalogElem = document.getElementById('product-catalog');
-    if (catalogElem) {
-      catalogElem.scrollIntoView({ behavior: 'smooth' });
-    }
+    navigateToCatalog();
   };
 
+  const handleNewArrivalsClick = () => {
+    setSelectedCategory('all');
+    setSelectedBrand('all');
+    setSelectedGender('ALL');
+    setIsBrandsDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+    navigateToCatalog();
+  };
 
   return (
     <header style={{
@@ -100,13 +124,15 @@ export const Navbar: React.FC = () => {
       }}>
         {/* Brand Logo (ZAP Atelier Luxury Logo) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
+          <Link
+            href="/"
             onClick={() => {
               setSelectedBrand('all');
               setSelectedCategory('all');
               setSelectedGender('ALL');
-              router.push('/');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              if (pathname === '/') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
             }}
             style={{
               background: 'none',
@@ -154,7 +180,7 @@ export const Navbar: React.FC = () => {
                 PREMIUM FOOTWEAR
               </span>
             </div>
-          </button>
+          </Link>
         </div>
 
         {/* Desktop Navigation Links */}
@@ -187,11 +213,15 @@ export const Navbar: React.FC = () => {
 
           {/* Brands Dropdown */}
           <div 
+            ref={brandsRef}
             style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center' }}
             onMouseEnter={() => setIsBrandsDropdownOpen(true)}
             onMouseLeave={() => setIsBrandsDropdownOpen(false)}
           >
             <button
+              type="button"
+              onClick={() => setIsBrandsDropdownOpen((prev) => !prev)}
+              aria-expanded={isBrandsDropdownOpen}
               style={{
                 ...navLinkStyle,
                 display: 'flex',
@@ -200,7 +230,13 @@ export const Navbar: React.FC = () => {
               }}
             >
               BRANDS
-              <ChevronDown size={14} />
+              <ChevronDown 
+                size={14} 
+                style={{ 
+                  transform: isBrandsDropdownOpen ? 'rotate(180deg)' : 'none', 
+                  transition: 'transform 0.2s ease' 
+                }} 
+              />
             </button>
 
             {isBrandsDropdownOpen && (
@@ -265,12 +301,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           <button
-            onClick={() => {
-              setSelectedCategory('all');
-              setSelectedBrand('all');
-              const catalogElem = document.getElementById('product-catalog');
-              if (catalogElem) catalogElem.scrollIntoView({ behavior: 'smooth' });
-            }}
+            onClick={handleNewArrivalsClick}
             style={{
               ...navLinkStyle,
               display: 'flex',
@@ -397,7 +428,7 @@ export const Navbar: React.FC = () => {
                 >
                   <Image
                     src={product.images[0]}
-                    alt={product.name}
+                    alt={stripHtml(product.name)}
                     width={42}
                     height={42}
                     unoptimized
@@ -421,7 +452,7 @@ export const Navbar: React.FC = () => {
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                     }}>
-                      {product.name}
+                      <FormattedText text={product.name} />
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -694,7 +725,7 @@ export const Navbar: React.FC = () => {
                   >
                     <Image
                       src={product.images[0]}
-                      alt={product.name}
+                      alt={stripHtml(product.name)}
                       width={38}
                       height={38}
                       unoptimized
@@ -717,7 +748,7 @@ export const Navbar: React.FC = () => {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                       }}>
-                        {product.name}
+                        <FormattedText text={product.name} />
                       </div>
                     </div>
                     <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0F172A' }}>
@@ -756,6 +787,9 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button onClick={handleNewArrivalsClick} style={mobileNavLinkStyle}>
+              ✨ NEW ARRIVALS
+            </button>
             <button onClick={() => handleGenderClick('MEN')} style={mobileNavLinkStyle}>MEN&apos;S SHOES</button>
             <button onClick={() => handleGenderClick('WOMEN')} style={mobileNavLinkStyle}>WOMEN&apos;S SHOES</button>
             <button onClick={() => handleGenderClick('KIDS')} style={mobileNavLinkStyle}>KIDS&apos; COLLECTION</button>

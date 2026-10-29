@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search, X, ArrowRight, Sparkles, TrendingUp } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
+import { FormattedText, stripHtml } from '../Common/FormattedText';
 
 const POPULAR_SEARCHES = [
   'Formal Leather',
@@ -67,7 +68,8 @@ export const SearchModal: React.FC = () => {
   const matchingProducts = queryClean === ''
     ? []
     : products.filter((p) => {
-        const matchName = p.name.toLowerCase().includes(queryClean);
+        const plainName = stripHtml(p.name).toLowerCase();
+        const matchName = plainName.includes(queryClean);
         const matchBrand = p.brand.toLowerCase().includes(queryClean);
         const matchCat = (p.categoryName || '').toLowerCase().includes(queryClean);
         const matchSku = (p.sku || '').toLowerCase().includes(queryClean);
@@ -322,7 +324,7 @@ export const SearchModal: React.FC = () => {
                     <div style={{ aspectRatio: '1/1', position: 'relative', backgroundColor: '#F8FAFC' }}>
                       <Image
                         src={p.images?.[0] || '/images/shoe-leather-formal.jpg'}
-                        alt={p.name}
+                        alt={stripHtml(p.name)}
                         fill
                         unoptimized
                         style={{ objectFit: 'cover' }}
@@ -338,7 +340,7 @@ export const SearchModal: React.FC = () => {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                       }}>
-                        {p.name}
+                        <FormattedText text={p.name} />
                       </div>
                       <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
                         Tk {p.price.toLocaleString()}
@@ -439,7 +441,7 @@ export const SearchModal: React.FC = () => {
                     >
                       <Image
                         src={p.images?.[0] || '/images/shoe-leather-formal.jpg'}
-                        alt={p.name}
+                        alt={stripHtml(p.name)}
                         width={52}
                         height={52}
                         unoptimized
@@ -473,7 +475,7 @@ export const SearchModal: React.FC = () => {
                           textOverflow: 'ellipsis',
                           lineHeight: 1.3,
                         }}>
-                          {p.name}
+                          <FormattedText text={p.name} />
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#64748B' }}>
                           Sizes: {p.sizes.slice(0, 4).join(', ')}{p.sizes.length > 4 ? '...' : ''}

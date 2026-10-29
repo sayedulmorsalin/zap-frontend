@@ -2,13 +2,16 @@
 
 import React from 'react';
 import { Truck, RotateCcw, ShieldCheck, CreditCard } from 'lucide-react';
+import { useShop } from '../../context/ShopContext';
 
 export const ValueProps: React.FC = () => {
+  const { storeSettings } = useShop();
+
   const perks = [
     {
       icon: <Truck size={24} color="#D32F2F" />,
       title: 'Free Delivery',
-      desc: 'On all orders above Tk 2,500 nationwide',
+      desc: `On all orders above Tk ${(storeSettings?.freeShippingThreshold ?? 2500).toLocaleString()} nationwide`,
     },
     {
       icon: <RotateCcw size={24} color="#D32F2F" />,

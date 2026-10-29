@@ -111,6 +111,14 @@ interface ShopContextType {
   applyCoupon: (code: string) => { success: boolean; message: string };
   removeCoupon: () => void;
   
+  // Delivery Charge & Location
+  deliveryLocation: 'inside_dhaka' | 'outside_dhaka';
+  setDeliveryLocation: (loc: 'inside_dhaka' | 'outside_dhaka') => void;
+  deliveryFeeInsideDhaka: number;
+  deliveryFeeOutsideDhaka: number;
+  deliveryFee: number;
+  getDeliveryFee: (loc?: 'inside_dhaka' | 'outside_dhaka') => number;
+  
   // Modals & Drawers
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
@@ -184,6 +192,18 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
 
+  // Delivery Location (Inside Dhaka: ৳70, Outside Dhaka: ৳130)
+  const [deliveryLocation, setDeliveryLocationState] = useState<'inside_dhaka' | 'outside_dhaka'>('inside_dhaka');
+
+  const setDeliveryLocation = useCallback((loc: 'inside_dhaka' | 'outside_dhaka') => {
+    setDeliveryLocationState(loc);
+    try {
+      localStorage.setItem('zap_delivery_location', loc);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Modals & UI States
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
@@ -242,7 +262,20 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (savedCustomers) setCustomers(JSON.parse(savedCustomers));
 
           const savedSettings = localStorage.getItem('zap_settings');
-          if (savedSettings) setStoreSettings(JSON.parse(savedSettings));
+          if (savedSettings) {
+            const parsed = JSON.parse(savedSettings);
+            setStoreSettings({
+              ...INITIAL_SETTINGS,
+              ...parsed,
+              deliveryFeeInsideDhaka: parsed.deliveryFeeInsideDhaka ?? 70,
+              deliveryFeeOutsideDhaka: parsed.deliveryFeeOutsideDhaka ?? 130,
+            });
+          }
+
+          const savedLocation = localStorage.getItem('zap_delivery_location');
+          if (savedLocation === 'inside_dhaka' || savedLocation === 'outside_dhaka') {
+            setDeliveryLocationState(savedLocation);
+          }
 
           const savedSlides = localStorage.getItem('zap_hero_slides');
           if (savedSlides) setHeroSlides(JSON.parse(savedSlides));
@@ -605,7 +638,15 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Store Settings ──
   const updateStoreSettings = (newSettings: Partial<StoreSettings>) => {
-    setStoreSettings((prev) => ({ ...prev, ...newSettings }));
+    setStoreSettings((prev) => {
+      const merged = { ...prev, ...newSettings };
+      try {
+        localStorage.setItem('zap_settings', JSON.stringify(merged));
+      } catch (err) {
+        console.error('Failed to save zap_settings to localStorage:', err);
+      }
+      return merged;
+    });
     showToast('Store settings saved successfully!');
   };
 
@@ -775,6 +816,20 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const discountAmount = Math.round((cartSubtotal * discountPercent) / 100);
 
+  const deliveryFeeInsideDhaka = storeSettings.deliveryFeeInsideDhaka ?? 70;
+  const deliveryFeeOutsideDhaka = storeSettings.deliveryFeeOutsideDhaka ?? 130;
+
+  const getDeliveryFee = useCallback(
+    (loc?: 'inside_dhaka' | 'outside_dhaka') => {
+      if (cartSubtotal >= freeShippingThreshold || cart.length === 0) return 0;
+      const targetLoc = loc || deliveryLocation;
+      return targetLoc === 'outside_dhaka' ? deliveryFeeOutsideDhaka : deliveryFeeInsideDhaka;
+    },
+    [cartSubtotal, freeShippingThreshold, cart.length, deliveryLocation, deliveryFeeInsideDhaka, deliveryFeeOutsideDhaka]
+  );
+
+  const deliveryFee = getDeliveryFee(deliveryLocation);
+
   const applyCoupon = (code: string) => {
     const cleanCode = code.trim().toUpperCase();
     
@@ -869,6 +924,13 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         discountAmount,
         applyCoupon,
         removeCoupon,
+
+        deliveryLocation,
+        setDeliveryLocation,
+        deliveryFeeInsideDhaka,
+        deliveryFeeOutsideDhaka,
+        deliveryFee,
+        getDeliveryFee,
 
         isCartOpen,
         setIsCartOpen,

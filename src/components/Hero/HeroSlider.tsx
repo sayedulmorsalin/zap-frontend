@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { BannerTargetType } from '../../types/banner';
+import { FormattedText, stripHtml } from '../Common/FormattedText';
 
 export const HeroSlider: React.FC = () => {
   const { 
@@ -136,7 +137,7 @@ export const HeroSlider: React.FC = () => {
               marginBottom: '12px',
               textTransform: 'uppercase',
             }}>
-              {slide.headline}
+              <FormattedText text={slide.headline} />
             </h1>
 
             <h2 style={{
@@ -146,7 +147,7 @@ export const HeroSlider: React.FC = () => {
               letterSpacing: '0.02em',
               marginBottom: '16px',
             }}>
-              {slide.subheadline}
+              <FormattedText text={slide.subheadline} />
             </h2>
 
             <p style={{
@@ -156,7 +157,7 @@ export const HeroSlider: React.FC = () => {
               marginBottom: '28px',
               maxWidth: '520px',
             }}>
-              {slide.description}
+              <FormattedText text={slide.description} />
             </p>
 
             <div style={{
@@ -217,7 +218,7 @@ export const HeroSlider: React.FC = () => {
             }}>
               <Image
                 src={slide.image || '/images/hero-banner.jpg'}
-                alt={slide.headline}
+                alt={stripHtml(slide.headline)}
                 width={960}
                 height={600}
                 priority

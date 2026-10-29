@@ -20,12 +20,14 @@ import {
 } from 'lucide-react';
 import { Product } from '../../types/product';
 import { useShop } from '../../context/ShopContext';
+import { FormattedText, stripHtml } from '../Common/FormattedText';
 import { AnnouncementBar } from '../Header/AnnouncementBar';
 import { Navbar } from '../Header/Navbar';
 import { Footer } from '../Footer/Footer';
 import { CartDrawer } from '../Modals/CartDrawer';
 import { WishlistDrawer } from '../Modals/WishlistDrawer';
 import { CheckoutModal } from '../Modals/CheckoutModal';
+import { ProductCard } from '../Catalog/ProductCard';
 import { TrackOrderModal } from '../Modals/TrackOrderModal';
 import { SizeGuideModal } from '../Modals/SizeGuideModal';
 import { COLOR_IMAGE_MAP } from '../../data/anchorCrest';
@@ -60,6 +62,12 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     showToast,
     toastMessage,
     products: allProducts,
+    setSelectedCategory,
+    setSelectedBrand,
+    setSelectedGender,
+    deliveryFeeInsideDhaka,
+    deliveryFeeOutsideDhaka,
+    freeShippingThreshold,
   } = useShop();
 
   const product = initialProduct;
@@ -338,16 +346,31 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           fontSize: '0.85rem',
           color: '#6B7280',
         }}>
-          <Link href="/" style={{ color: '#111827', textDecoration: 'none', fontWeight: 500 }}>
+          <Link 
+            href="/#product-catalog" 
+            onClick={() => {
+              setSelectedCategory('all');
+              setSelectedBrand('all');
+              setSelectedGender('ALL');
+            }}
+            style={{ color: '#111827', textDecoration: 'none', fontWeight: 500 }}
+          >
             Shop
           </Link>
           <span>/</span>
-          <Link href="/" style={{ color: '#6B7280', textDecoration: 'none' }}>
+          <Link 
+            href="/#product-catalog" 
+            onClick={() => {
+              if (product.category) setSelectedCategory(product.category);
+              setSelectedBrand('all');
+            }}
+            style={{ color: '#6B7280', textDecoration: 'none' }}
+          >
             {product.categoryName || 'Casual Shoes'}
           </Link>
           <span>/</span>
           <span style={{ color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {product.name}
+            <FormattedText text={product.name} />
           </span>
         </div>
       </div>
@@ -391,7 +414,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                 >
                   <Image
                     src={imgUrl}
-                    alt={`${product.name} thumbnail ${idx + 1}`}
+                    alt={`${stripHtml(product.name)} thumbnail ${idx + 1}`}
                     width={80}
                     height={80}
                     unoptimized
@@ -421,7 +444,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
             }}>
               <Image
                 src={activeImages[activeImageIdx] || activeImages[0] || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'}
-                alt={product.name}
+                alt={stripHtml(product.name)}
                 width={700}
                 height={700}
                 priority
@@ -501,7 +524,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               lineHeight: 1.25,
               marginBottom: '4px',
             }}>
-              {product.name}
+              <FormattedText text={product.name} />
             </h1>
 
             {/* SKU */}
@@ -580,7 +603,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                         fontWeight: isEmphasized ? 600 : 400,
                         color: isEmphasized ? '#111827' : '#374151',
                       }}>
-                        {text || line}
+                        <FormattedText text={text || line} />
                       </span>
                     </div>
                   );
@@ -884,6 +907,64 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               </button>
             </div>
 
+            {/* Delivery Charge & Assurance Info */}
+            <div style={{
+              marginTop: '20px',
+              backgroundColor: '#F8FAFC',
+              borderRadius: '10px',
+              border: '1px solid #E2E8F0',
+              padding: '14px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  backgroundColor: '#FEE2E2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  marginTop: '1px',
+                }}>
+                  <Truck size={17} color="#D32F2F" />
+                </div>
+                <div style={{ flex: 1, fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: 700, color: '#0F172A', marginBottom: '2px' }}>
+                    Delivery Charges Across Bangladesh
+                  </div>
+                  <div style={{ color: '#475569', fontSize: '0.8rem', lineHeight: 1.45 }}>
+                    <span style={{ fontWeight: 600, color: '#0F172A' }}>Inside Dhaka: ৳{deliveryFeeInsideDhaka}</span> (24–48h express) • <span style={{ fontWeight: 600, color: '#0F172A' }}>Outside Dhaka: ৳{deliveryFeeOutsideDhaka}</span> (2–4 days)
+                  </div>
+                  <div style={{ color: '#15803D', fontSize: '0.75rem', fontWeight: 700, marginTop: '3px' }}>
+                    ⚡ FREE Delivery on orders over Tk {freeShippingThreshold.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '8px',
+                paddingTop: '8px',
+                borderTop: '1px solid #E2E8F0',
+                fontSize: '0.75rem',
+                color: '#64748B',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <RotateCcw size={13} color="#D32F2F" />
+                  <span>7-Day Size Exchange</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <ShieldCheck size={13} color="#15803D" />
+                  <span>Cash on Delivery Available</span>
+                </div>
+              </div>
+            </div>
+
             {/* Secondary actions: Share */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '20px', fontSize: '0.85rem', color: '#6B7280' }}>
               <button
@@ -1053,9 +1134,9 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                       {selectedColor} Edition Specifications
                     </h4>
                   </div>
-                  <p style={{ whiteSpace: 'pre-line', fontSize: '0.92rem', color: '#374151', margin: 0, lineHeight: 1.7 }}>
-                    {selectedColorway.description}
-                  </p>
+                  <div style={{ whiteSpace: 'pre-line', fontSize: '0.92rem', color: '#374151', margin: 0, lineHeight: 1.7 }}>
+                    <FormattedText text={selectedColorway.description} />
+                  </div>
                 </div>
               ) : null}
 
@@ -1063,16 +1144,16 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               {product.description ? (
                 <div>
                   <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111827', marginBottom: '10px' }}>
-                    About {product.name}
+                    About <FormattedText text={product.name} />
                   </h4>
-                  <p style={{ whiteSpace: 'pre-line', fontSize: '0.92rem', color: '#374151', lineHeight: 1.7 }}>
-                    {product.description}
-                  </p>
+                  <div style={{ whiteSpace: 'pre-line', fontSize: '0.92rem', color: '#374151', lineHeight: 1.7 }}>
+                    <FormattedText text={product.description} />
+                  </div>
                 </div>
               ) : (
                 <div>
                   <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111827', marginBottom: '10px' }}>
-                    {product.name}
+                    <FormattedText text={product.name} />
                   </h4>
                   <p style={{ fontSize: '0.92rem', color: '#64748B', lineHeight: 1.7 }}>
                     Engineered for all-day comfort, durability, and contemporary styling with premium cushioning.
@@ -1397,78 +1478,31 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
         {/* ─── 5. Related Products Section ─── */}
         {finalRelated.length > 0 && (
           <section style={{ marginTop: '64px', borderTop: '1px solid #E5E7EB', paddingTop: '32px' }}>
-            <h3 style={{
-              fontSize: '1.4rem',
-              fontWeight: 700,
-              color: '#111827',
-              marginBottom: '20px',
-            }}>
-              Related Products
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3 style={{
+                fontSize: '1.4rem',
+                fontWeight: 700,
+                color: '#111827',
+                margin: 0,
+              }}>
+                Related Products
+              </h3>
+              <Link
+                href="/#product-catalog"
+                style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: '#D32F2F',
+                  textDecoration: 'none',
+                }}
+              >
+                View All Shoes →
+              </Link>
+            </div>
 
-            <div className="related-products-grid">
+            <div className="product-catalog-grid related-products-grid">
               {finalRelated.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => router.push(`/products/${item.slug || item.id}`)}
-                  className="related-product-card"
-                  style={{
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    overflow: 'hidden',
-                    backgroundColor: '#FFFFFF',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-3px)';
-                    e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.06)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <div style={{
-                    position: 'relative',
-                    aspectRatio: '1/1',
-                    backgroundColor: '#F8FAFC',
-                    overflow: 'hidden',
-                  }}>
-                    <Image
-                      src={item.images?.[0] || product.images?.[0] || '/images/shoe-leather-formal.jpg'}
-                      alt={item.name}
-                      width={300}
-                      height={300}
-                      unoptimized
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                      }}
-                    />
-                  </div>
-                  <div className="related-product-card-body" style={{ padding: '14px' }}>
-                    <div className="related-product-card-brand" style={{ fontSize: '0.72rem', color: '#9CA3AF', textTransform: 'uppercase', fontWeight: 600, marginBottom: '4px' }}>
-                      {item.brand}
-                    </div>
-                    <div className="related-product-card-title" style={{
-                      fontSize: '0.92rem',
-                      fontWeight: 600,
-                      color: '#111827',
-                      lineHeight: 1.3,
-                      marginBottom: '8px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {item.name}
-                    </div>
-                    <div className="related-product-card-price" style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111827' }}>
-                      BDT {item.price.toLocaleString()}
-                    </div>
-                  </div>
-                </div>
+                <ProductCard key={item.id} product={item} />
               ))}
             </div>
           </section>
@@ -1480,7 +1514,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
       <div className="mobile-sticky-bar">
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
           <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {product.name}
+            <FormattedText text={product.name} />
           </span>
           <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#D32F2F' }}>
             BDT {product.price.toLocaleString()}

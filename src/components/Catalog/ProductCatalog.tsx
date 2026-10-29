@@ -51,20 +51,30 @@ export const ProductCatalog: React.FC = () => {
 
   const sizes = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
 
-  // Check URL query parameters for search on mount
+  // Check URL query parameters and hash on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const q = params.get('search');
       if (q && q.trim()) {
         setSearchQuery(q.trim());
+      }
+
+      const scrollToCatalog = () => {
         const catalogElem = document.getElementById('product-catalog');
         if (catalogElem) {
           setTimeout(() => {
             catalogElem.scrollIntoView({ behavior: 'smooth' });
           }, 150);
         }
+      };
+
+      if (window.location.hash === '#product-catalog' || (q && q.trim())) {
+        scrollToCatalog();
       }
+
+      window.addEventListener('hashchange', scrollToCatalog);
+      return () => window.removeEventListener('hashchange', scrollToCatalog);
     }
   }, [setSearchQuery]);
 

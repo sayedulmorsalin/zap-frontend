@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Heart, Eye, ShoppingBag, Star } from 'lucide-react';
 import { Product } from '../../types/product';
 import { useShop } from '../../context/ShopContext';
+import { FormattedText, stripHtml } from '../Common/FormattedText';
 
 interface ProductCardProps {
   product: Product;
@@ -27,6 +28,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   const primaryImg = selectedColorway?.images?.[0] || product.images?.[0] || '/images/shoe-leather-formal.jpg';
   const secondaryImg = selectedColorway?.images?.[1] || product.images?.[1] || primaryImg;
+
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [product.id, selectedColor]);
+
+  const defaultFallback = product.category === 'formal' ? '/images/shoe-leather-formal.jpg' : '/images/shoe-power-runner.jpg';
+  const currentImg = imgError ? defaultFallback : (isHovered ? secondaryImg : primaryImg);
 
   // Determine stock for current selected color & size
   let currentStock = 10;
@@ -144,11 +154,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         justifyContent: 'center',
       }}>
         <Image
-          src={isHovered ? secondaryImg : primaryImg}
-          alt={product.name}
+          src={currentImg}
+          alt={stripHtml(product.name)}
           width={400}
           height={400}
           unoptimized
+          onError={() => {
+            if (!imgError) {
+              setImgError(true);
+            }
+          }}
           style={{
             width: '90%',
             height: '90%',
@@ -237,7 +252,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
         }}>
-          {product.name}
+          <FormattedText text={product.name} />
         </h3>
 
         {/* Rating Stars */}

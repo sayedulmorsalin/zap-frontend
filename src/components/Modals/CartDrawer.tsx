@@ -14,6 +14,7 @@ import {
   AlertCircle 
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
+import { FormattedText, stripHtml } from '../Common/FormattedText';
 
 export const CartDrawer: React.FC = () => {
   const router = useRouter();
@@ -32,6 +33,11 @@ export const CartDrawer: React.FC = () => {
     applyCoupon,
     removeCoupon,
     setIsCheckoutOpen,
+    deliveryLocation,
+    setDeliveryLocation,
+    deliveryFeeInsideDhaka,
+    deliveryFeeOutsideDhaka,
+    deliveryFee,
   } = useShop();
 
   const [couponInput, setCouponInput] = useState('');
@@ -39,7 +45,7 @@ export const CartDrawer: React.FC = () => {
 
   if (!isCartOpen) return null;
 
-  const deliveryFee = cartSubtotal >= freeShippingThreshold || cart.length === 0 ? 0 : 100;
+  const isInsideDhaka = deliveryLocation === 'inside_dhaka';
   const finalTotal = Math.max(0, cartSubtotal + deliveryFee - discountAmount);
 
   const handleApplyCoupon = (e: React.FormEvent) => {
@@ -232,7 +238,7 @@ export const CartDrawer: React.FC = () => {
                 }}>
                   <Image
                     src={itemImage}
-                    alt={`${item.product.name} - ${item.selectedColor}`}
+                    alt={`${stripHtml(item.product.name)} - ${item.selectedColor}`}
                     width={72}
                     height={72}
                     unoptimized
@@ -258,7 +264,7 @@ export const CartDrawer: React.FC = () => {
                         lineHeight: 1.3,
                         marginBottom: '4px',
                       }}>
-                        {item.product.name}
+                        <FormattedText text={item.product.name} />
                       </h4>
                     </div>
 
@@ -449,6 +455,60 @@ export const CartDrawer: React.FC = () => {
               )}
             </div>
 
+            {/* Delivery Destination Selector */}
+            <div style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '8px',
+              border: '1px solid #E2E8F0',
+              padding: '8px 10px',
+              marginBottom: '12px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>
+                  Delivery Destination:
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#D32F2F', fontWeight: 600 }}>
+                  {isInsideDhaka ? `Inside Dhaka (৳${deliveryFeeInsideDhaka})` : `Outside Dhaka (৳${deliveryFeeOutsideDhaka})`}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setDeliveryLocation('inside_dhaka')}
+                  style={{
+                    padding: '6px 8px',
+                    borderRadius: '6px',
+                    border: isInsideDhaka ? '1.5px solid #D32F2F' : '1px solid #E2E8F0',
+                    backgroundColor: isInsideDhaka ? '#FEF2F2' : '#F8FAFC',
+                    color: isInsideDhaka ? '#D32F2F' : '#64748B',
+                    fontSize: '0.75rem',
+                    fontWeight: isInsideDhaka ? 700 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  Inside Dhaka (৳{deliveryFeeInsideDhaka})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeliveryLocation('outside_dhaka')}
+                  style={{
+                    padding: '6px 8px',
+                    borderRadius: '6px',
+                    border: !isInsideDhaka ? '1.5px solid #D32F2F' : '1px solid #E2E8F0',
+                    backgroundColor: !isInsideDhaka ? '#FEF2F2' : '#F8FAFC',
+                    color: !isInsideDhaka ? '#D32F2F' : '#64748B',
+                    fontSize: '0.75rem',
+                    fontWeight: !isInsideDhaka ? 700 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  Outside Dhaka (৳{deliveryFeeOutsideDhaka})
+                </button>
+              </div>
+            </div>
+
             {/* Price Calculations */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#64748B' }}>
@@ -457,12 +517,12 @@ export const CartDrawer: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#64748B' }}>
-                <span>Standard Delivery (BD)</span>
+                <span>Delivery ({isInsideDhaka ? 'Inside Dhaka' : 'Outside Dhaka'})</span>
                 <span>
                   {deliveryFee === 0 ? (
                     <strong style={{ color: '#15803D' }}>FREE</strong>
                   ) : (
-                    <span style={{ fontWeight: 700, color: '#0F172A' }}>Tk 100</span>
+                    <span style={{ fontWeight: 700, color: '#0F172A' }}>Tk {deliveryFee}</span>
                   )}
                 </span>
               </div>

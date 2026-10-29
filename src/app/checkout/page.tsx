@@ -59,6 +59,11 @@ export default function CheckoutPage() {
     setIsTrackOrderOpen,
     setIsCartOpen,
     toastMessage,
+    deliveryLocation,
+    setDeliveryLocation,
+    deliveryFeeInsideDhaka,
+    deliveryFeeOutsideDhaka,
+    storeSettings,
   } = useShop();
 
   // Close any open cart drawer when arriving at checkout page
@@ -71,7 +76,7 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
-  const [division, setDivision] = useState('Dhaka');
+  const [division, setDivision] = useState(deliveryLocation === 'outside_dhaka' ? 'Chittagong' : 'Dhaka');
   const [postalCode, setPostalCode] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
@@ -84,8 +89,28 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
 
-  const deliveryFee = cartSubtotal >= freeShippingThreshold || cart.length === 0 ? 0 : 100;
+  const isInsideDhaka = division === 'Dhaka' || deliveryLocation === 'inside_dhaka';
+  const baseDeliveryFee = isInsideDhaka ? deliveryFeeInsideDhaka : deliveryFeeOutsideDhaka;
+  const deliveryFee = cartSubtotal >= freeShippingThreshold || cart.length === 0 ? 0 : baseDeliveryFee;
   const finalTotal = Math.max(0, cartSubtotal + deliveryFee - discountAmount);
+
+  const handleDeliveryLocationChange = (loc: 'inside_dhaka' | 'outside_dhaka') => {
+    setDeliveryLocation(loc);
+    if (loc === 'inside_dhaka') {
+      setDivision('Dhaka');
+    } else if (division === 'Dhaka') {
+      setDivision('Chittagong');
+    }
+  };
+
+  const handleDivisionChange = (newDivision: string) => {
+    setDivision(newDivision);
+    if (newDivision === 'Dhaka') {
+      setDeliveryLocation('inside_dhaka');
+    } else {
+      setDeliveryLocation('outside_dhaka');
+    }
+  };
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,7 +243,7 @@ export default function CheckoutPage() {
               </h1>
 
               <p style={{ color: '#64748B', fontSize: '1rem', maxWidth: '580px', margin: '0 auto 28px' }}>
-                We have received your order and dispatched details to our central Tongi fulfillment center. An SMS confirmation will be sent shortly.
+                We have received your order and dispatched details to our {storeSettings?.centralWarehouse ? storeSettings.centralWarehouse.split(',')[0] : 'central fulfillment hub'}. An SMS confirmation will be sent shortly.
               </p>
 
               {/* Order Receipt Box */}
@@ -503,6 +528,97 @@ export default function CheckoutPage() {
                         </h2>
                       </div>
 
+                      {/* Delivery Zone Selection: Inside Dhaka (৳70) vs Outside Dhaka (৳130) */}
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{ ...labelStyle, marginBottom: '8px' }}>
+                          <Truck size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                          SELECT DELIVERY ZONE <span style={{ color: '#D32F2F' }}>*</span>
+                        </label>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                          gap: '12px',
+                        }}>
+                          {/* Inside Dhaka Option */}
+                          <div
+                            onClick={() => handleDeliveryLocationChange('inside_dhaka')}
+                            style={{
+                              border: isInsideDhaka ? '2px solid #D32F2F' : '1.5px solid #E2E8F0',
+                              backgroundColor: isInsideDhaka ? '#FEF2F2' : '#FFFFFF',
+                              borderRadius: '12px',
+                              padding: '14px 16px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              name="checkoutDeliveryZone"
+                              checked={isInsideDhaka}
+                              onChange={() => handleDeliveryLocationChange('inside_dhaka')}
+                              style={{ accentColor: '#D32F2F', cursor: 'pointer' }}
+                            />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                                <strong style={{ fontSize: '0.9rem', color: '#0F172A' }}>Inside Dhaka</strong>
+                                <span style={{
+                                  fontSize: '0.85rem',
+                                  fontWeight: 800,
+                                  color: deliveryFee === 0 ? '#15803D' : '#D32F2F',
+                                }}>
+                                  {cartSubtotal >= freeShippingThreshold ? 'FREE' : `৳${deliveryFeeInsideDhaka}`}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: '0.74rem', color: '#64748B', display: 'block', marginTop: '2px' }}>
+                                24–48 Hours Express Doorstep
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Outside Dhaka Option */}
+                          <div
+                            onClick={() => handleDeliveryLocationChange('outside_dhaka')}
+                            style={{
+                              border: !isInsideDhaka ? '2px solid #D32F2F' : '1.5px solid #E2E8F0',
+                              backgroundColor: !isInsideDhaka ? '#FEF2F2' : '#FFFFFF',
+                              borderRadius: '12px',
+                              padding: '14px 16px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              name="checkoutDeliveryZone"
+                              checked={!isInsideDhaka}
+                              onChange={() => handleDeliveryLocationChange('outside_dhaka')}
+                              style={{ accentColor: '#D32F2F', cursor: 'pointer' }}
+                            />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                                <strong style={{ fontSize: '0.9rem', color: '#0F172A' }}>Outside Dhaka</strong>
+                                <span style={{
+                                  fontSize: '0.85rem',
+                                  fontWeight: 800,
+                                  color: deliveryFee === 0 ? '#15803D' : '#D32F2F',
+                                }}>
+                                  {cartSubtotal >= freeShippingThreshold ? 'FREE' : `৳${deliveryFeeOutsideDhaka}`}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: '0.74rem', color: '#64748B', display: 'block', marginTop: '2px' }}>
+                                2–4 Days Nationwide Courier
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                       <div style={{ marginBottom: '16px' }}>
                         <label style={labelStyle}>
                           <MapPin size={13} style={{ display: 'inline', marginRight: '4px' }} />
@@ -523,17 +639,17 @@ export default function CheckoutPage() {
                           <label style={labelStyle}>DIVISION / REGION <span style={{ color: '#D32F2F' }}>*</span></label>
                           <select
                             value={division}
-                            onChange={(e) => setDivision(e.target.value)}
+                            onChange={(e) => handleDivisionChange(e.target.value)}
                             style={inputStyle}
                           >
-                            <option value="Dhaka">Dhaka (24-48h Express Delivery)</option>
-                            <option value="Chittagong">Chittagong (2-3 Business Days)</option>
-                            <option value="Sylhet">Sylhet (2-3 Business Days)</option>
-                            <option value="Rajshahi">Rajshahi (3-4 Business Days)</option>
-                            <option value="Khulna">Khulna (3-4 Business Days)</option>
-                            <option value="Barisal">Barisal (3-4 Business Days)</option>
-                            <option value="Rangpur">Rangpur (3-4 Business Days)</option>
-                            <option value="Mymensingh">Mymensingh (2-3 Business Days)</option>
+                            <option value="Dhaka">Dhaka (Inside Dhaka • ৳{deliveryFeeInsideDhaka})</option>
+                            <option value="Chittagong">Chittagong (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                            <option value="Sylhet">Sylhet (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                            <option value="Rajshahi">Rajshahi (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                            <option value="Khulna">Khulna (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                            <option value="Barisal">Barisal (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                            <option value="Rangpur">Rangpur (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
+                            <option value="Mymensingh">Mymensingh (Outside Dhaka • ৳{deliveryFeeOutsideDhaka})</option>
                           </select>
                         </div>
 
@@ -1067,7 +1183,7 @@ export default function CheckoutPage() {
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B' }}>
-                        <span>Nationwide Delivery:</span>
+                        <span>Delivery ({isInsideDhaka ? 'Inside Dhaka' : 'Outside Dhaka'}):</span>
                         <span>
                           {deliveryFee === 0 ? (
                             <strong style={{ color: '#15803D' }}>FREE</strong>
@@ -1121,7 +1237,7 @@ export default function CheckoutPage() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: '#475569' }}>
                         <Clock size={16} color="#2563EB" />
-                        <span><strong>Fast Dispatch:</strong> Sent within 24h from Tongi central warehouse</span>
+                        <span><strong>Fast Dispatch:</strong> Sent within 24h from {storeSettings?.centralWarehouse ? storeSettings.centralWarehouse.split(',')[0] : 'central warehouse'}</span>
                       </div>
                     </div>
 

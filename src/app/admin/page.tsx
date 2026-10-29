@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Shield, KeyRound, ArrowRight, ArrowLeft, AlertCircle } from 'lucide-react';
 import './admin.css';
@@ -21,18 +21,23 @@ import { useShop } from '../../context/ShopContext';
 export default function AdminPage() {
   const [currentTab, setCurrentTab] = useState<AdminTab>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      return sessionStorage.getItem('zap_admin_auth') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [isMounted, setIsMounted] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passkeyInput, setPasskeyInput] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
   const { toastMessage, showToast } = useShop();
+
+  // Safely synchronize client authentication post-mount to eliminate SSR hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+    try {
+      const auth = sessionStorage.getItem('zap_admin_auth') === 'true';
+      setIsAuthenticated(auth);
+    } catch {
+      setIsAuthenticated(false);
+    }
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +64,43 @@ export default function AdminPage() {
     setPasskeyInput('');
     showToast('Admin console locked.');
   };
+
+  // Prevent SSR hydration mismatch before client mounts
+  if (!isMounted) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#09090B',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '14px',
+        }}>
+          <div style={{
+            width: '46px',
+            height: '46px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #B91C1C 0%, #DC2626 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#FFFFFF',
+            boxShadow: '0 8px 24px rgba(220, 38, 38, 0.35)',
+          }}>
+            <Shield size={22} />
+          </div>
+          <div style={{ color: '#94A3B8', fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.06em' }}>
+            AUTHENTICATING SECURE CONSOLE...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // If not authenticated, render private obsidian gate
   if (!isAuthenticated) {

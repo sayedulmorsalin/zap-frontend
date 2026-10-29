@@ -24,10 +24,23 @@ export const AnnouncementBar: React.FC = () => {
       }}>
         {/* Left: Value Perks ticker */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Truck size={14} color="#EF4444" />
-            <span><strong>FREE Delivery</strong> across BD on orders over Tk {storeSettings.freeShippingThreshold.toLocaleString()}</span>
-          </div>
+          {storeSettings?.announcementTicker ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: '#EF4444', fontWeight: 800 }}>⚡</span>
+              <span style={{ fontWeight: 600, color: '#F3F4F6' }}>{storeSettings.announcementTicker}</span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Truck size={14} color="#EF4444" />
+              <span><strong>FREE Delivery</strong> across BD on orders over Tk {(storeSettings?.freeShippingThreshold ?? 2500).toLocaleString()}</span>
+            </div>
+          )}
+          {storeSettings?.announcementTicker && (
+            <div style={{ display: 'none', alignItems: 'center', gap: '6px' }} className="announcement-desktop-item">
+              <Truck size={14} color="#EF4444" />
+              <span><strong>FREE Delivery</strong> over Tk {(storeSettings?.freeShippingThreshold ?? 2500).toLocaleString()}</span>
+            </div>
+          )}
           <div style={{ display: 'none', alignItems: 'center', gap: '6px' }} className="announcement-desktop-item">
             <RotateCcw size={14} color="#EF4444" />
             <span>7 Days Hassle-Free Exchange</span>
@@ -59,7 +72,7 @@ export const AnnouncementBar: React.FC = () => {
           </button>
 
           <a
-            href={`tel:${storeSettings.supportPhone.replace(/[^0-9]/g, '')}`}
+            href={`tel:${(storeSettings?.supportPhone || '+8809666777222').replace(/[^0-9+]/g, '')}`}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -70,7 +83,7 @@ export const AnnouncementBar: React.FC = () => {
             }}
           >
             <Phone size={13} color="#9CA3AF" />
-            <span>Hotline: <strong>{storeSettings.supportPhone}</strong></span>
+            <span>Hotline: <strong>{storeSettings?.supportPhone || '+880 9666 777 222'}</strong></span>
           </a>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#9CA3AF', fontSize: '0.78rem' }}>

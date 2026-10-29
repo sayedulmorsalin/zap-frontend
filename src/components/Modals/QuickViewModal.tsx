@@ -15,6 +15,7 @@ import {
   ExternalLink 
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
+import { FormattedText, stripHtml } from '../Common/FormattedText';
 
 export const QuickViewModal: React.FC = () => {
   const router = useRouter();
@@ -165,7 +166,7 @@ export const QuickViewModal: React.FC = () => {
             }}>
               <Image
                 src={activeImages[activeImageIdx] || activeImages[0] || product.images[0]}
-                alt={`${product.name} - ${currentColor}`}
+                alt={`${stripHtml(product.name)} - ${currentColor}`}
                 width={500}
                 height={500}
                 unoptimized
@@ -244,7 +245,7 @@ export const QuickViewModal: React.FC = () => {
               lineHeight: 1.25,
               marginBottom: '10px',
             }}>
-              {product.name}
+              <FormattedText text={product.name} />
             </h2>
 
             {/* Ratings & Stock Badge */}

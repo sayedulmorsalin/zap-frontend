@@ -5,6 +5,7 @@ import { fetchApiProduct, fetchApiProducts } from '../../../services/api';
 import { ANCHOR_CREST_PRODUCT } from '../../../data/anchorCrest';
 import { ProductDetailView } from '../../../components/Product/ProductDetailView';
 import { Product } from '../../../types/product';
+import { stripHtml } from '../../../components/Common/FormattedText';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -24,12 +25,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     product = ANCHOR_CREST_PRODUCT;
   }
 
+  const cleanName = stripHtml(product.name);
+  const cleanDesc = stripHtml(product.description || '');
+
   return {
-    title: `${product.name} | ZAP Footwear Bangladesh`,
-    description: `Shop ${product.name} at ZAP Footwear. Premium quality shoes with Cash on Delivery and nationwide shipping across Bangladesh.`,
+    title: `${cleanName} | ZAP Footwear Bangladesh`,
+    description: `Shop ${cleanName} at ZAP Footwear. Premium quality shoes with Cash on Delivery and nationwide shipping across Bangladesh.`,
     openGraph: {
-      title: `${product.name} - BDT ${product.price}`,
-      description: product.description,
+      title: `${cleanName} - BDT ${product.price}`,
+      description: cleanDesc,
       images: product.images[0] ? [product.images[0]] : [],
     },
   };

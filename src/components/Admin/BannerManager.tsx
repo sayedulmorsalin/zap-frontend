@@ -24,6 +24,8 @@ import {
 import { useShop } from '../../context/ShopContext';
 import { HeroSlide, BannerTargetType } from '../../types/banner';
 import { uploadApiFiles } from '../../services/api';
+import { RichTextEditor } from './RichTextEditor';
+import { FormattedText } from '../Common/FormattedText';
 
 const PRESET_ACCENT_COLORS = [
   { name: 'Zap Crimson', hex: '#D32F2F' },
@@ -697,7 +699,7 @@ export const BannerManager: React.FC = () => {
                         margin: '0 0 4px',
                         textTransform: 'uppercase',
                       }}>
-                        {heroForm.headline || 'HEADLINE'}
+                        <FormattedText text={heroForm.headline || 'HEADLINE'} />
                       </h4>
                       <h5 style={{
                         fontSize: '0.75rem',
@@ -705,7 +707,7 @@ export const BannerManager: React.FC = () => {
                         color: '#E2E8F0',
                         margin: '0 0 8px',
                       }}>
-                        {heroForm.subheadline || 'SUBHEADLINE'}
+                        <FormattedText text={heroForm.subheadline || 'SUBHEADLINE'} />
                       </h5>
                       <p style={{
                         fontSize: '0.72rem',
@@ -717,7 +719,7 @@ export const BannerManager: React.FC = () => {
                         WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
                       }}>
-                        {heroForm.description || 'Slide description paragraph goes here...'}
+                        <FormattedText text={heroForm.description || 'Slide description paragraph goes here...'} />
                       </p>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <span style={{
@@ -839,48 +841,37 @@ export const BannerManager: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>
-                      Main Headline (Uppercase)
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={heroForm.headline}
-                      onChange={(e) => setHeroForm({ ...heroForm, headline: e.target.value })}
-                      placeholder="e.g. VELOCITY RUN NITRO"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>
-                      Subheadline
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={heroForm.subheadline}
-                      onChange={(e) => setHeroForm({ ...heroForm, subheadline: e.target.value })}
-                      placeholder="e.g. UNLEASH YOUR FASTEST PACE"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>
-                    Description Text
-                  </label>
-                  <textarea
-                    className="form-input"
-                    rows={2}
-                    value={heroForm.description}
-                    onChange={(e) => setHeroForm({ ...heroForm, description: e.target.value })}
-                    placeholder="Describe shoe features, kinetics, material craft, or event..."
+                  <RichTextEditor
+                    label="Main Headline (Uppercase)"
+                    value={heroForm.headline}
+                    onChange={(val) => setHeroForm({ ...heroForm, headline: val })}
+                    placeholder="e.g. VELOCITY RUN NITRO"
                     required
+                    multiline={false}
+                    hint="Highlight key words with bold, accent colors, or size changes."
+                  />
+
+                  <RichTextEditor
+                    label="Subheadline"
+                    value={heroForm.subheadline}
+                    onChange={(val) => setHeroForm({ ...heroForm, subheadline: val })}
+                    placeholder="e.g. UNLEASH YOUR FASTEST PACE"
+                    required
+                    multiline={false}
+                    hint="Style subheadline with italics or colors."
                   />
                 </div>
+
+                <RichTextEditor
+                  label="Description Text"
+                  value={heroForm.description}
+                  onChange={(val) => setHeroForm({ ...heroForm, description: val })}
+                  placeholder="Describe shoe features, kinetics, material craft, or event..."
+                  required
+                  rows={2}
+                  multiline={true}
+                  hint="Full styling supported: bold words, font sizes, text color, and highlights."
+                />
 
                 {/* Image Selection & Upload */}
                 <div style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>

@@ -5,7 +5,8 @@ import {
   Phone, 
   MapPin, 
   ShieldCheck, 
-  Clock 
+  Clock,
+  Mail 
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { ValueProps } from '../Features/ValueProps';
@@ -16,7 +17,8 @@ export const Footer: React.FC = () => {
     setSelectedBrand, 
     setSelectedGender, 
     setIsTrackOrderOpen, 
-    setIsSizeGuideOpen
+    setIsSizeGuideOpen,
+    storeSettings
   } = useShop();
 
   const scrollToCatalog = () => {
@@ -73,15 +75,21 @@ export const Footer: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.825rem', color: '#CBD5E1' }}>
                   <Phone size={15} color="#EF4444" />
-                  <span>Hotline: <strong>09666-200300</strong></span>
+                  <span>Hotline: <a href={`tel:${(storeSettings?.supportPhone || '09666-200300').replace(/[^0-9+]/g, '')}`} style={{ color: '#FFFFFF', textDecoration: 'none', fontWeight: 700 }}>{storeSettings?.supportPhone || '09666-200300'}</a></span>
                 </div>
+                {storeSettings?.supportEmail && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.825rem', color: '#CBD5E1' }}>
+                    <Mail size={15} color="#EF4444" />
+                    <span>Email: <a href={`mailto:${storeSettings.supportEmail}`} style={{ color: '#CBD5E1', textDecoration: 'none', fontWeight: 600 }}>{storeSettings.supportEmail}</a></span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.825rem', color: '#CBD5E1' }}>
                   <Clock size={15} color="#94A3B8" />
                   <span>9:00 AM &ndash; 10:00 PM (Daily)</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.825rem', color: '#CBD5E1' }}>
                   <MapPin size={15} color="#EF4444" />
-                  <span>Tongi Industrial Area, Gazipur, BD</span>
+                  <span>{storeSettings?.centralWarehouse || 'Tongi Industrial Area, Gazipur, BD'}</span>
                 </div>
               </div>
             </div>
@@ -228,7 +236,7 @@ export const Footer: React.FC = () => {
           gap: '12px',
         }}>
           <div>
-            &copy; 2026 <strong>ZAP Footwear Bangladesh Ltd.</strong> All Rights Reserved. Mastercrafted in Dhaka.
+            &copy; {new Date().getFullYear()} <strong>{storeSettings?.storeName || 'ZAP Footwear Bangladesh Ltd.'}</strong> All Rights Reserved. Mastercrafted in Dhaka.
           </div>
 
           <div style={{ display: 'flex', gap: '18px' }}>

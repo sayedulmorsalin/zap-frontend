@@ -12,6 +12,8 @@ import {
 import { useShop } from '../../context/ShopContext';
 import { BrandInfo } from '../../types/product';
 import { uploadApiFiles } from '../../services/api';
+import { RichTextEditor } from './RichTextEditor';
+import { FormattedText } from '../Common/FormattedText';
 
 export const BrandCategoryManager: React.FC = () => {
   const { brands, addBrand, deleteBrand, products } = useShop();
@@ -158,9 +160,9 @@ export const BrandCategoryManager: React.FC = () => {
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#D32F2F', marginBottom: '8px' }}>
                   {b.tagline}
                 </div>
-                <p style={{ fontSize: '0.78rem', color: '#64748B', lineHeight: 1.4, margin: 0 }}>
-                  {b.description}
-                </p>
+                <div style={{ fontSize: '0.78rem', color: '#64748B', lineHeight: 1.4, margin: 0 }}>
+                  <FormattedText text={b.description} />
+                </div>
               </div>
 
               <div style={{
@@ -363,18 +365,15 @@ export const BrandCategoryManager: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '4px' }}>
-                  Brand Description
-                </label>
-                <textarea
-                  rows={2}
-                  value={newBrand.description}
-                  onChange={(e) => setNewBrand({ ...newBrand, description: e.target.value })}
-                  className="admin-input"
-                  style={{ resize: 'vertical' }}
-                />
-              </div>
+              <RichTextEditor
+                label="Brand Description"
+                value={newBrand.description}
+                onChange={(val) => setNewBrand({ ...newBrand, description: val })}
+                rows={2}
+                multiline={true}
+                placeholder="Brief heritage or craft background for this brand..."
+                hint="You can add bold text, brand colors, or custom styling."
+              />
 
               <div className="admin-modal-actions">
                 <button

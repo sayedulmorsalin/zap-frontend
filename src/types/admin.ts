@@ -90,6 +90,8 @@ export interface StoreSettings {
   announcementTicker: string;
   freeShippingThreshold: number;
   standardShippingFee: number;
+  deliveryFeeInsideDhaka: number;
+  deliveryFeeOutsideDhaka: number;
   centralWarehouse: string;
   currencySymbol: string;
   isMaintenanceMode: boolean;

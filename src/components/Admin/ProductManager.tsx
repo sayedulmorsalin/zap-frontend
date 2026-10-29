@@ -27,6 +27,7 @@ import {
 import { useShop } from '../../context/ShopContext';
 import { Product, Gender, ShoeCategory, ProductVariant, ColorVariantGroup } from '../../types/product';
 import { uploadApiFiles } from '../../services/api';
+import { RichTextEditor } from './RichTextEditor';
 
 export interface ColorwayItem {
   id: string;
@@ -934,20 +935,16 @@ export const ProductManager: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Product Name */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
-                  Product Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. ZAP Signature Royal Oxford Derby Shoe"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="admin-input"
-                />
-              </div>
+              {/* Product Title */}
+              <RichTextEditor
+                label="Product Title"
+                required
+                value={formData.name}
+                onChange={(val) => setFormData({ ...formData, name: val })}
+                placeholder="e.g. ZAP Signature Royal Oxford Derby Shoe"
+                multiline={false}
+                hint="You can make keywords bold, change font size, or apply vibrant colors."
+              />
 
               {/* SKU & Brand */}
               <div className="admin-grid-2col">
@@ -1046,49 +1043,27 @@ export const ProductManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* Product Description */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px' }}>
-                  1st Description: General Product Overview (Shown in Description Tab)
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Describe footwear construction, upper materials, insole comfort, ergonomics, and styling advice..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="admin-input"
-                  style={{ resize: 'vertical' }}
-                />
-              </div>
+              {/* Product 1st Description */}
+              <RichTextEditor
+                label="1st Description: General Product Overview (Shown in Description Tab)"
+                value={formData.description}
+                onChange={(val) => setFormData({ ...formData, description: val })}
+                placeholder="Describe footwear construction, upper materials, insole comfort, ergonomics, and styling advice..."
+                rows={4}
+                multiline={true}
+                hint="You can format text with bold, italic, colors, and font sizes to highlight craftsmanship."
+              />
 
               {/* Storefront Highlights & Bullet Points (Shown under price on website) */}
-              <div style={{
-                backgroundColor: '#F8FAFC',
-                border: '1.5px solid #E2E8F0',
-                borderRadius: '8px',
-                padding: '14px',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
-                  <label style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Sparkles size={15} color="#D32F2F" />
-                    <span>Storefront Bullet Points & Highlights (Shown directly under price on website)</span>
-                  </label>
-                  <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>
-                    1 bullet per line • Emojis supported
-                  </span>
-                </div>
-                <textarea
-                  rows={6}
-                  placeholder={`⚡ LEVEL UP YOUR SHOE COLLECTION!\n🚚 Pre-order delivery in 20–25 days ( 2-3 days if in stock)\n🎁 Extra 10% coupon after first delivery (SMS)\n🌐 High-quality imported shoes\n💎 Handpicked for quality, comfort & durability\n🔮 Perfect for bold, modern style-lovers`}
-                  value={formData.featuresText}
-                  onChange={(e) => setFormData({ ...formData, featuresText: e.target.value })}
-                  className="admin-input"
-                  style={{ resize: 'vertical', width: '100%', backgroundColor: '#FFFFFF', fontSize: '0.84rem', lineHeight: 1.6 }}
-                />
-                <p style={{ fontSize: '0.72rem', color: '#64748B', margin: '6px 0 0 0' }}>
-                  💡 These bullet points appear directly below the price on the product page. You can customize the delivery terms, discounts, guarantees, or style highlights for this shoe.
-                </p>
-              </div>
+              <RichTextEditor
+                label="Storefront Bullet Points & Highlights (Shown directly under price on website)"
+                value={formData.featuresText}
+                onChange={(val) => setFormData({ ...formData, featuresText: val })}
+                placeholder={`⚡ LEVEL UP YOUR SHOE COLLECTION!\n🚚 Pre-order delivery in 20–25 days ( 2-3 days if in stock)\n🎁 Extra 10% coupon after first delivery (SMS)\n🌐 High-quality imported shoes\n💎 Handpicked for quality, comfort & durability\n🔮 Perfect for bold, modern style-lovers`}
+                rows={6}
+                multiline={true}
+                hint="1 bullet per line. Add styling like bold, colors, or font-size to make key perks pop out!"
+              />
 
               {/* ─── COLORWAYS, PHOTOS & SIZE-WISE STOCK INVENTORY ─── */}
               <div style={{
@@ -1342,30 +1317,15 @@ export const ProductManager: React.FC = () => {
                       </div>
 
                       {/* ─── 2ND DESCRIPTION: COLORWAY-SPECIFIC DESCRIPTION ─── */}
-                      <div style={{
-                        backgroundColor: '#F8FAFC',
-                        border: '1.5px solid #E2E8F0',
-                        borderRadius: '8px',
-                        padding: '12px 14px',
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
-                          <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <FileText size={15} color="#D32F2F" />
-                            <span>2nd Description: Specifications & Details for {cw.color || 'this color'} (Optional)</span>
-                          </label>
-                          <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>
-                            Displayed on product page when shopper selects {cw.color || 'this color'}
-                          </span>
-                        </div>
-                        <textarea
-                          rows={2}
-                          placeholder={`e.g. ${cw.color || 'This color'} edition crafted with premium upper material, breathable lining, and durable rubber foam sole...`}
-                          value={cw.description || ''}
-                          onChange={(e) => handleUpdateColorway(cw.id, { description: e.target.value })}
-                          className="admin-input"
-                          style={{ fontSize: '0.82rem', resize: 'vertical', width: '100%', backgroundColor: '#FFFFFF' }}
-                        />
-                      </div>
+                      <RichTextEditor
+                        label={`2nd Description: Specifications & Details for ${cw.color || 'this color'} (Optional)`}
+                        value={cw.description || ''}
+                        onChange={(val) => handleUpdateColorway(cw.id, { description: val })}
+                        placeholder={`e.g. ${cw.color || 'This color'} edition crafted with premium upper material, breathable lining, and durable rubber foam sole...`}
+                        rows={3}
+                        multiline={true}
+                        hint={`Displayed on product page when shopper selects ${cw.color || 'this color'}. Style with bold, colors, or sizes.`}
+                      />
 
                       {/* ─── PHOTOS FOR THIS COLORWAY ─── */}
                       <div>

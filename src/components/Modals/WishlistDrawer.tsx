@@ -4,6 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import { X, Heart, Trash2, ShoppingBag } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
+import { FormattedText, stripHtml } from '../Common/FormattedText';
 
 export const WishlistDrawer: React.FC = () => {
   const {
@@ -149,7 +150,7 @@ export const WishlistDrawer: React.FC = () => {
                 >
                   <Image
                     src={product.images[0]}
-                    alt={product.name}
+                    alt={stripHtml(product.name)}
                     width={72}
                     height={72}
                     unoptimized
@@ -177,7 +178,7 @@ export const WishlistDrawer: React.FC = () => {
                           marginBottom: '4px',
                         }}
                       >
-                        {product.name}
+                        <FormattedText text={product.name} />
                       </h4>
                     </div>
 
