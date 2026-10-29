@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { Product, Gender, ShoeCategory, ProductVariant, ColorVariantGroup } from '../../types/product';
-import { uploadApiFiles } from '../../services/api';
+import { uploadApiFiles, normalizeImageUrl } from '../../services/api';
 import { RichTextEditor } from './RichTextEditor';
 
 export interface ColorwayItem {
@@ -347,7 +347,7 @@ export const ProductManager: React.FC = () => {
     try {
       const res = await uploadApiFiles(filesArray, 'PRODUCT');
       if (res.success && res.data && res.data.length > 0) {
-        const newUrls = res.data.map((item) => item.url);
+        const newUrls = res.data.map((item) => normalizeImageUrl(item.url));
         setColorways((prev) =>
           prev.map((cw) =>
             cw.id === colorwayId
@@ -356,7 +356,7 @@ export const ProductManager: React.FC = () => {
           )
         );
       } else {
-        setUploadError(res.message || 'Upload to SeaweedFS failed.');
+        setUploadError(res.message || 'Upload to storage failed.');
       }
     } catch (err: unknown) {
       setUploadError(err instanceof Error ? err.message : 'Network error during file upload');
@@ -392,10 +392,11 @@ export const ProductManager: React.FC = () => {
   const handleAddColorwayManualUrl = (colorwayId: string) => {
     const val = (colorwayUrlInput[colorwayId] || '').trim();
     if (!val) return;
+    const normalized = normalizeImageUrl(val);
     setColorways((prev) =>
       prev.map((cw) =>
         cw.id === colorwayId
-          ? { ...cw, images: [...cw.images, val] }
+          ? { ...cw, images: [...cw.images, normalized] }
           : cw
       )
     );

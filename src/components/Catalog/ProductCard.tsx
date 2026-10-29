@@ -7,6 +7,7 @@ import { Heart, Eye, ShoppingBag, Star } from 'lucide-react';
 import { Product } from '../../types/product';
 import { useShop } from '../../context/ShopContext';
 import { FormattedText, stripHtml } from '../Common/FormattedText';
+import { normalizeImageUrl } from '../../services/api';
 
 interface ProductCardProps {
   product: Product;
@@ -26,8 +27,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     (cv) => cv.color.toLowerCase() === selectedColor.toLowerCase()
   );
 
-  const primaryImg = selectedColorway?.images?.[0] || product.images?.[0] || '/images/shoe-leather-formal.jpg';
-  const secondaryImg = selectedColorway?.images?.[1] || product.images?.[1] || primaryImg;
+  const rawPrimary = selectedColorway?.images?.[0] || product.images?.[0] || '/images/shoe-leather-formal.jpg';
+  const rawSecondary = selectedColorway?.images?.[1] || product.images?.[1] || rawPrimary;
+  const primaryImg = normalizeImageUrl(rawPrimary);
+  const secondaryImg = normalizeImageUrl(rawSecondary);
 
   const [imgError, setImgError] = useState(false);
 

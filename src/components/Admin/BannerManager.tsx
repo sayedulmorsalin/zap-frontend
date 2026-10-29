@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { HeroSlide, BannerTargetType } from '../../types/banner';
-import { uploadApiFiles } from '../../services/api';
+import { uploadApiFiles, normalizeImageUrl } from '../../services/api';
 import { RichTextEditor } from './RichTextEditor';
 import { FormattedText } from '../Common/FormattedText';
 
@@ -146,35 +146,27 @@ export const BannerManager: React.FC = () => {
     reorderHeroSlides(updated);
   };
 
-  // ── Handle Image Upload (SeaweedFS with FileReader fallback) ──
+  // ── Handle Image Upload (SeaweedFS / Persistent Server Storage) ──
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploadingImage(true);
     try {
-      // 1. Try uploading to backend API storage (SeaweedFS S3 or server disk)
       const res = await uploadApiFiles([file], 'BANNER');
       if (res.success && res.data && res.data[0]?.url) {
-        setHeroForm((prev) => ({ ...prev, image: res.data![0].url }));
-        setIsUploadingImage(false);
-        return;
+        const fullUrl = normalizeImageUrl(res.data[0].url);
+        setHeroForm((prev) => ({ ...prev, image: fullUrl }));
+      } else {
+        alert(`Banner upload failed: ${res.message || 'Storage server unreachable'}`);
       }
     } catch (err) {
-      console.warn('[Banner Image Upload API]:', err);
+      console.error('[Banner Image Upload API Error]:', err);
+      alert('Network error while uploading banner to server. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
     }
-
-    // 2. Base64 fallback (guarantees upload works locally or offline)
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setHeroForm((prev) => ({ ...prev, image: result }));
-      setIsUploadingImage(false);
-    };
-    reader.onerror = () => {
-      setIsUploadingImage(false);
-    };
-    reader.readAsDataURL(file);
   };
 
 

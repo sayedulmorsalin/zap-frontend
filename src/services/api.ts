@@ -11,6 +11,42 @@ const API_BASE = (
   DOKPLOY_VPS_API_URL
 ).replace(/\/+$/, '');
 
+/**
+ * Normalizes an image URL to guarantee accessibility across all client devices.
+ * - Rewrites localhost:3001 and 127.0.0.1:3001 to API_BASE so mobile/LAN devices can fetch the image
+ * - Prefixes relative /api/storage/files/... paths with API_BASE
+ * - Converts raw uploads/... paths to full API storage routes
+ */
+export function normalizeImageUrl(url?: string | null): string {
+  if (!url || typeof url !== 'string') {
+    return 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80';
+  }
+
+  const trimmed = url.trim();
+  if (!trimmed) {
+    return 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80';
+  }
+
+  // Rewrite localhost/127.0.0.1 to API_BASE for external client devices (mobile, tablet, etc.)
+  if (trimmed.includes('localhost:3001') || trimmed.includes('127.0.0.1:3001')) {
+    return trimmed.replace(/^https?:\/\/(localhost|127\.0\.0\.1):3001/, API_BASE);
+  }
+
+  // Prepend API_BASE for relative storage file paths
+  if (trimmed.startsWith('/api/storage/') || trimmed.startsWith('api/storage/')) {
+    const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    return `${API_BASE}${cleanPath}`;
+  }
+
+  // Handle direct uploads/ paths
+  if (trimmed.startsWith('/uploads/') || trimmed.startsWith('uploads/')) {
+    const cleanKey = trimmed.replace(/^\/+/, '');
+    return `${API_BASE}/api/storage/files/${cleanKey}`;
+  }
+
+  return trimmed;
+}
+
 export interface ApiHealthResponse {
   status: string;
   timestamp: string;
@@ -114,7 +150,9 @@ export function transformBackendProduct(bp: RawBackendProduct): Product {
     : undefined;
 
   const rawImages = Array.isArray(bp.images) && bp.images.length > 0
-    ? bp.images.map((img) => typeof img === 'string' ? { url: img, alt: '' } : { url: img.url, alt: img.alt || '' })
+    ? bp.images.map((img) => typeof img === 'string' 
+        ? { url: normalizeImageUrl(img), alt: '' } 
+        : { url: normalizeImageUrl(img.url), alt: img.alt || '' })
     : [{ url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80', alt: '' }];
   const images: string[] = rawImages.map(img => img.url);
 
@@ -957,7 +995,7 @@ export async function uploadApiFiles(
     if (records && Array.isArray(records)) {
       records = records.map((r) => ({
         ...r,
-        url: r.url && r.url.startsWith('/') && !r.url.startsWith('//') ? `${API_BASE}${r.url}` : r.url,
+        url: normalizeImageUrl(r.url),
       }));
     }
 
@@ -1138,7 +1176,17 @@ export async function fetchApiBanners(): Promise<ApiBannersResponse | null> {
     if (!res.ok) return null;
     const json = await res.json();
     if (json.success && json.data) {
-      return json.data as ApiBannersResponse;
+      const bannerData = json.data as ApiBannersResponse;
+      return {
+        heroSlides: (bannerData.heroSlides || []).map((slide) => ({
+          ...slide,
+          image: normalizeImageUrl(slide.image),
+        })),
+        promoBanners: (bannerData.promoBanners || []).map((banner) => ({
+          ...banner,
+          image: normalizeImageUrl(banner.image),
+        })),
+      };
     }
     return null;
   } catch (err) {

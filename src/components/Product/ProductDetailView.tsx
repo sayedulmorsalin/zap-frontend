@@ -32,7 +32,7 @@ import { TrackOrderModal } from '../Modals/TrackOrderModal';
 import { SizeGuideModal } from '../Modals/SizeGuideModal';
 import { COLOR_IMAGE_MAP } from '../../data/anchorCrest';
 import { ProductReview } from '../../types/product';
-import { fetchProductReviews, submitProductReview } from '../../services/api';
+import { fetchProductReviews, submitProductReview, normalizeImageUrl } from '../../services/api';
 
 export const DEFAULT_STOREFRONT_BULLETS = [
   '⚡ LEVEL UP YOUR SHOE COLLECTION!',
@@ -160,11 +160,12 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     (cv) => cv.color.toLowerCase() === selectedColor.toLowerCase()
   );
 
-  const activeImages = (selectedColorway && selectedColorway.images && selectedColorway.images.length > 0)
+  const rawActiveImages = (selectedColorway && selectedColorway.images && selectedColorway.images.length > 0)
     ? selectedColorway.images
     : (product.images && product.images.length > 0
       ? product.images
       : ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80']);
+  const activeImages = rawActiveImages.map(normalizeImageUrl);
 
   // Build size -> stock map for selected color
   const sizeStockMap: { [size: string]: number } = {};

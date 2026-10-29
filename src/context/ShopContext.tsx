@@ -485,13 +485,16 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProducts((prev) => prev.map((p) => (p.id === product.id ? savedProd : p)));
           showToast(`Product "${savedProd.name.slice(0, 24)}" published to storefront & database!`);
         } else {
-          console.error('Backend product creation warning:', res.message);
-          showToast(`Database alert: ${res.message || 'Product saved locally only'}`);
+          console.error('Backend product creation failed:', res.message);
+          // Rollback optimistic product so it doesn't linger only in this browser's localStorage
+          setProducts((prev) => prev.filter((p) => p.id !== product.id));
+          showToast(`Failed to publish: ${res.message || 'Database rejected product'}`);
         }
       })
       .catch((err) => {
         console.error('Failed to sync created product with PostgreSQL:', err);
-        showToast('Error syncing product to database.');
+        setProducts((prev) => prev.filter((p) => p.id !== product.id));
+        showToast('Error syncing product to database. Check network.');
       });
   };
 

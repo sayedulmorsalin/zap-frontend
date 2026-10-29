@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, ArrowRight, ShieldCheck } from 'lucide-react
 import { useShop } from '../../context/ShopContext';
 import { BannerTargetType } from '../../types/banner';
 import { FormattedText, stripHtml } from '../Common/FormattedText';
+import { normalizeImageUrl } from '../../services/api';
 
 export const HeroSlider: React.FC = () => {
   const { 
@@ -217,7 +218,7 @@ export const HeroSlider: React.FC = () => {
               border: '2px solid rgba(255, 255, 255, 0.1)',
             }}>
               <Image
-                src={slide.image || '/images/hero-banner.jpg'}
+                src={normalizeImageUrl(slide.image) || '/images/hero-banner.jpg'}
                 alt={stripHtml(slide.headline)}
                 width={960}
                 height={600}
