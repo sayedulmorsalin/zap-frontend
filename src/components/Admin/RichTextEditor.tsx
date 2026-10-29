@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Bold, 
   Italic, 
@@ -11,8 +11,8 @@ import {
   Highlighter, 
   RotateCcw, 
   Eye, 
+  Code,
   Edit3, 
-  Sparkles,
   Smile
 } from 'lucide-react';
 import { FormattedText } from '../Common/FormattedText';
@@ -71,34 +71,204 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   hint,
   className,
 }) => {
-  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+  // Mode: 'visual' (WYSIWYG preview directly editable) vs 'code' (raw HTML)
+  const [mode, setMode] = useState<'visual' | 'code'>('visual');
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
   const [showSizePicker, setShowSizePicker] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [customColor, setCustomColor] = useState('#D32F2F');
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const savedRangeRef = useRef<Range | null>(null);
+  const lastHtmlRef = useRef<string>(value || '');
 
-  const getTarget = (): HTMLInputElement | HTMLTextAreaElement | null => {
-    return multiline ? textareaRef.current : inputRef.current;
+  // Keep contentEditable innerHTML in sync with value prop when updated from outside
+  useEffect(() => {
+    if (contentRef.current && mode === 'visual') {
+      const currentInner = contentRef.current.innerHTML;
+      if (value !== lastHtmlRef.current && value !== currentInner) {
+        contentRef.current.innerHTML = value || '';
+        lastHtmlRef.current = value || '';
+      }
+    }
+  }, [value, mode]);
+
+  // Save selection before clicking toolbar items
+  const saveSelection = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && contentRef.current?.contains(sel.anchorNode)) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  }, []);
+
+  // Restore saved selection
+  const restoreSelection = useCallback(() => {
+    if (typeof window === 'undefined' || !contentRef.current) return;
+    contentRef.current.focus();
+    if (savedRangeRef.current) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedRangeRef.current);
+      }
+    }
+  }, []);
+
+  // Sync contentEditable changes to parent
+  const handleContentInput = () => {
+    if (!contentRef.current) return;
+    let html = contentRef.current.innerHTML;
+    // Normalize empty content
+    if (html === '<br>' || html === '<p><br></p>' || html.trim() === '') {
+      html = '';
+    }
+    lastHtmlRef.current = html;
+    onChange(html);
+    saveSelection();
   };
 
   /**
-   * Wraps selected text with an open and close tag, or inserts a sample placeholder.
+   * Apply visual formatting by wrapping selection with styled span or tag
    */
-  const wrapSelection = (openTag: string, closeTag: string, defaultText = 'styled text') => {
-    const el = getTarget();
+  const applyStyleToSelection = (styles: Record<string, string>, defaultText = 'styled text') => {
+    if (mode === 'code') {
+      // In code mode, insert raw tag
+      const styleString = Object.entries(styles)
+        .map(([k, v]) => `${k.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${v}`)
+        .join('; ');
+      insertRawTag(`<span style="${styleString}">`, '</span>', defaultText);
+      return;
+    }
+
+    restoreSelection();
+    const editor = contentRef.current;
+    if (!editor) return;
+
+    const sel = window.getSelection();
+    const range = (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode))
+      ? sel.getRangeAt(0)
+      : null;
+
+    const span = document.createElement('span');
+    Object.assign(span.style, styles);
+
+    if (!range || range.collapsed) {
+      // No selection: insert styled sample text
+      span.textContent = defaultText;
+      if (range) {
+        range.insertNode(span);
+        const newRange = document.createRange();
+        newRange.selectNodeContents(span);
+        sel?.removeAllRanges();
+        sel?.addRange(newRange);
+      } else {
+        editor.appendChild(span);
+      }
+    } else {
+      // Wrap selected text directly
+      try {
+        const fragment = range.extractContents();
+        span.appendChild(fragment);
+        range.insertNode(span);
+        const newRange = document.createRange();
+        newRange.selectNodeContents(span);
+        sel?.removeAllRanges();
+        sel?.addRange(newRange);
+      } catch {
+        span.textContent = range.toString() || defaultText;
+        range.deleteContents();
+        range.insertNode(span);
+      }
+    }
+
+    handleContentInput();
+  };
+
+  /**
+   * Apply semantic inline tags (<b>, <i>, <u>, <s>) visually in contentEditable
+   */
+  const applyInlineTag = (tag: 'b' | 'i' | 'u' | 's', defaultText = 'styled text') => {
+    if (mode === 'code') {
+      insertRawTag(`<${tag}>`, `</${tag}>`, defaultText);
+      return;
+    }
+
+    restoreSelection();
+    const editor = contentRef.current;
+    if (!editor) return;
+
+    const sel = window.getSelection();
+    const range = (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode))
+      ? sel.getRangeAt(0)
+      : null;
+
+    // Use document.execCommand for native visual toggling where supported
+    const cmdMap: Record<string, string> = {
+      b: 'bold',
+      i: 'italic',
+      u: 'underline',
+      s: 'strikeThrough',
+    };
+
+    if (range && !range.collapsed && cmdMap[tag]) {
+      try {
+        const success = document.execCommand(cmdMap[tag], false);
+        if (success) {
+          handleContentInput();
+          return;
+        }
+      } catch {
+        // Fallback to DOM element wrapping
+      }
+    }
+
+    // DOM wrapping fallback
+    const el = document.createElement(tag);
+    if (!range || range.collapsed) {
+      el.textContent = defaultText;
+      if (range) {
+        range.insertNode(el);
+        const newRange = document.createRange();
+        newRange.selectNodeContents(el);
+        sel?.removeAllRanges();
+        sel?.addRange(newRange);
+      } else {
+        editor.appendChild(el);
+      }
+    } else {
+      try {
+        const fragment = range.extractContents();
+        el.appendChild(fragment);
+        range.insertNode(el);
+        const newRange = document.createRange();
+        newRange.selectNodeContents(el);
+        sel?.removeAllRanges();
+        sel?.addRange(newRange);
+      } catch {
+        el.textContent = range.toString();
+        range.deleteContents();
+        range.insertNode(el);
+      }
+    }
+
+    handleContentInput();
+  };
+
+  /**
+   * Fallback for raw HTML insertion when in Code tab
+   */
+  const insertRawTag = (openTag: string, closeTag: string, defaultText = 'styled text') => {
+    const el = textareaRef.current;
     if (!el) {
       onChange(`${value}${openTag}${defaultText}${closeTag}`);
       return;
     }
-
     const start = el.selectionStart ?? value.length;
     const end = el.selectionEnd ?? value.length;
     const selected = value.substring(start, end);
-
     const replacement = selected.length > 0
       ? `${openTag}${selected}${closeTag}`
       : `${openTag}${defaultText}${closeTag}`;
@@ -111,78 +281,113 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       const newCursorStart = start + openTag.length;
       const newCursorEnd = newCursorStart + (selected.length > 0 ? selected.length : defaultText.length);
       el.setSelectionRange(newCursorStart, newCursorEnd);
-    }, 50);
+    }, 40);
   };
 
-  // Formatting actions
-  const applyBold = () => wrapSelection('<b>', '</b>', 'bold text');
-  const applyItalic = () => wrapSelection('<i>', '</i>', 'italic text');
-  const applyUnderline = () => wrapSelection('<u>', '</u>', 'underlined text');
-  const applyStrike = () => wrapSelection('<s>', '</s>', 'strikethrough text');
+  const applyBold = () => applyInlineTag('b', 'bold text');
+  const applyItalic = () => applyInlineTag('i', 'italic text');
+  const applyUnderline = () => applyInlineTag('u', 'underlined text');
+  const applyStrike = () => applyInlineTag('s', 'strikethrough text');
 
   const applyColor = (colorHex: string) => {
-    wrapSelection(`<span style="color: ${colorHex}">`, '</span>', 'colored text');
+    applyStyleToSelection({ color: colorHex }, 'colored text');
     setShowColorPicker(false);
   };
 
-  const applyHighlight = (bg: string, color: string) => {
-    wrapSelection(
-      `<span style="background-color: ${bg}; color: ${color}; padding: 1px 6px; border-radius: 4px; font-weight: 600">`,
-      '</span>',
-      'highlighted text'
-    );
+  const applyHighlight = (bg: string, textColor: string) => {
+    applyStyleToSelection({
+      backgroundColor: bg,
+      color: textColor,
+      padding: '2px 6px',
+      borderRadius: '4px',
+      fontWeight: '600',
+    }, 'highlighted text');
     setShowHighlightPicker(false);
   };
 
   const applyFontSize = (sizeVal: string) => {
-    wrapSelection(`<span style="font-size: ${sizeVal}">`, '</span>', 'resized text');
+    applyStyleToSelection({ fontSize: sizeVal }, 'resized text');
     setShowSizePicker(false);
   };
 
   const insertEmoji = (emoji: string) => {
-    const el = getTarget();
-    if (!el) {
-      onChange(`${value}${emoji} `);
+    if (mode === 'code') {
+      const el = textareaRef.current;
+      if (!el) {
+        onChange(`${value}${emoji} `);
+        return;
+      }
+      const start = el.selectionStart ?? value.length;
+      const end = el.selectionEnd ?? value.length;
+      const newValue = value.substring(0, start) + emoji + ' ' + value.substring(end);
+      onChange(newValue);
+      setShowEmojiPicker(false);
       return;
     }
-    const start = el.selectionStart ?? value.length;
-    const end = el.selectionEnd ?? value.length;
-    const newValue = value.substring(0, start) + emoji + ' ' + value.substring(end);
-    onChange(newValue);
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(start + emoji.length + 1, start + emoji.length + 1);
-    }, 50);
+
+    restoreSelection();
+    const editor = contentRef.current;
+    if (!editor) return;
+
+    const sel = window.getSelection();
+    const range = (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode))
+      ? sel.getRangeAt(0)
+      : null;
+
+    const textNode = document.createTextNode(emoji + ' ');
+    if (range) {
+      range.deleteContents();
+      range.insertNode(textNode);
+      range.setStartAfter(textNode);
+      range.collapse(true);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    } else {
+      editor.appendChild(textNode);
+    }
+
     setShowEmojiPicker(false);
+    handleContentInput();
   };
 
   const clearFormatting = () => {
-    const el = getTarget();
-    if (!el) return;
-    const start = el.selectionStart ?? 0;
-    const end = el.selectionEnd ?? value.length;
-
-    if (start === end) {
-      // Clear all tags in entire value
+    if (mode === 'code') {
       const stripped = value.replace(/<[^>]*>/g, '');
       onChange(stripped);
       return;
     }
 
-    const selected = value.substring(start, end);
-    const cleaned = selected.replace(/<[^>]*>/g, '');
-    const newValue = value.substring(0, start) + cleaned + value.substring(end);
-    onChange(newValue);
+    restoreSelection();
+    const editor = contentRef.current;
+    if (!editor) return;
 
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(start, start + cleaned.length);
-    }, 50);
+    const sel = window.getSelection();
+    const range = (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode))
+      ? sel.getRangeAt(0)
+      : null;
+
+    if (!range || range.collapsed) {
+      // Clear all tags in whole editor
+      const plainText = editor.innerText || editor.textContent || '';
+      editor.innerText = plainText;
+    } else {
+      try {
+        document.execCommand('removeFormat', false);
+      } catch {
+        const plain = range.toString();
+        range.deleteContents();
+        range.insertNode(document.createTextNode(plain));
+      }
+    }
+
+    handleContentInput();
   };
+
+  const isValueEmpty = !value || value.trim() === '' || value === '<br>' || value === '<p><br></p>';
 
   return (
     <div style={{ marginBottom: '14px' }} className={className}>
-      {/* Header bar: Label + Edit/Preview tabs */}
+      {/* Header bar: Label + Visual Preview / HTML Code tabs */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -198,6 +403,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           </label>
         )}
 
+        {/* View Mode Toggle: Visual (Default live preview) vs Code (Raw HTML) */}
         <div style={{
           display: 'inline-flex',
           backgroundColor: '#F1F5F9',
@@ -207,7 +413,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         }}>
           <button
             type="button"
-            onClick={() => setActiveTab('edit')}
+            onClick={() => setMode('visual')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -218,17 +424,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               borderRadius: '4px',
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'edit' ? '#FFFFFF' : 'transparent',
-              color: activeTab === 'edit' ? '#0F172A' : '#64748B',
-              boxShadow: activeTab === 'edit' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              backgroundColor: mode === 'visual' ? '#FFFFFF' : 'transparent',
+              color: mode === 'visual' ? '#0F172A' : '#64748B',
+              boxShadow: mode === 'visual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
             }}
           >
-            <Edit3 size={12} />
-            <span>Edit</span>
+            <Eye size={12} color={mode === 'visual' ? '#D32F2F' : '#64748B'} />
+            <span>Visual Preview</span>
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('preview')}
+            onClick={() => setMode('code')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -239,13 +445,13 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               borderRadius: '4px',
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'preview' ? '#FFFFFF' : 'transparent',
-              color: activeTab === 'preview' ? '#D32F2F' : '#64748B',
-              boxShadow: activeTab === 'preview' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              backgroundColor: mode === 'code' ? '#FFFFFF' : 'transparent',
+              color: mode === 'code' ? '#0F172A' : '#64748B',
+              boxShadow: mode === 'code' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
             }}
           >
-            <Eye size={12} />
-            <span>Live Preview</span>
+            <Code size={12} />
+            <span>HTML Code</span>
           </button>
         </div>
       </div>
@@ -257,7 +463,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         borderRadius: '8px',
         overflow: 'hidden',
         boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-        transition: 'border-color 0.15s ease',
+        position: 'relative',
       }}>
         {/* Formatting Toolbar */}
         <div style={{
@@ -273,8 +479,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           {/* Bold */}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={applyBold}
-            title="Bold (<b>...</b>)"
+            title="Make Selection Bold"
             style={toolbarBtnStyle}
           >
             <Bold size={14} />
@@ -283,8 +490,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           {/* Italic */}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={applyItalic}
-            title="Italic (<i>...</i>)"
+            title="Make Selection Italic"
             style={toolbarBtnStyle}
           >
             <Italic size={14} />
@@ -293,8 +501,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           {/* Underline */}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={applyUnderline}
-            title="Underline (<u>...</u>)"
+            title="Underline Selection"
             style={toolbarBtnStyle}
           >
             <Underline size={14} />
@@ -303,8 +512,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           {/* Strikethrough */}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={applyStrike}
-            title="Strikethrough (<s>...</s>)"
+            title="Strikethrough Selection"
             style={toolbarBtnStyle}
           >
             <Strikethrough size={14} />
@@ -316,6 +526,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <div style={{ position: 'relative' }}>
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 setShowSizePicker(!showSizePicker);
                 setShowColorPicker(false);
@@ -348,32 +559,37 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                 zIndex: 100,
-                padding: '4px 0',
-                minWidth: '150px',
+                padding: '6px',
+                width: '180px',
               }}>
-                {FONT_SIZES.map((sz) => (
-                  <button
-                    key={sz.value}
-                    type="button"
-                    onClick={() => applyFontSize(sz.value)}
-                    style={{
-                      width: '100%',
-                      padding: '6px 12px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      fontSize: '0.78rem',
-                      cursor: 'pointer',
-                      display: 'block',
-                      color: '#1E293B',
-                      transition: 'background 0.12s ease',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    {sz.label}
-                  </button>
-                ))}
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748B', marginBottom: '6px', textTransform: 'uppercase' }}>
+                  Choose Font Size
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  {FONT_SIZES.map((sz) => (
+                    <button
+                      key={sz.value}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => applyFontSize(sz.value)}
+                      style={{
+                        padding: '6px 8px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: sz.value,
+                        color: '#0F172A',
+                        fontWeight: 600,
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      {sz.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -382,25 +598,23 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <div style={{ position: 'relative' }}>
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 setShowColorPicker(!showColorPicker);
                 setShowSizePicker(false);
                 setShowHighlightPicker(false);
                 setShowEmojiPicker(false);
               }}
-              title="Text Color"
+              title="Apply Text Color"
               style={{
                 ...toolbarBtnStyle,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px',
-                padding: '4px 8px',
-                fontSize: '0.75rem',
-                fontWeight: 700,
               }}
             >
               <Palette size={14} color="#D32F2F" />
-              <span>Color</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>Color</span>
             </button>
 
             {showColorPicker && (
@@ -415,7 +629,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
                 zIndex: 100,
                 padding: '10px',
-                width: '180px',
+                width: '210px',
               }}>
                 <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748B', marginBottom: '8px', textTransform: 'uppercase' }}>
                   Preset Colors
@@ -425,43 +639,42 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                     <button
                       key={c.hex}
                       type="button"
-                      title={c.name}
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => applyColor(c.hex)}
+                      title={c.name}
                       style={{
-                        width: '26px',
-                        height: '26px',
+                        width: '28px',
+                        height: '28px',
                         borderRadius: '6px',
                         backgroundColor: c.hex,
-                        border: '1.5px solid rgba(0,0,0,0.15)',
+                        border: '2px solid #FFFFFF',
+                        boxShadow: '0 0 0 1px #CBD5E1',
                         cursor: 'pointer',
-                        padding: 0,
-                        transition: 'transform 0.1s ease',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.15)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
                     />
                   ))}
                 </div>
 
-                <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   <input
                     type="color"
                     value={customColor}
                     onChange={(e) => setCustomColor(e.target.value)}
-                    style={{ width: '28px', height: '26px', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+                    style={{ width: '32px', height: '28px', borderRadius: '4px', border: 'none', cursor: 'pointer', padding: 0 }}
                   />
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => applyColor(customColor)}
                     style={{
                       flex: 1,
                       padding: '4px 8px',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
                       backgroundColor: '#0F172A',
                       color: '#FFFFFF',
                       border: 'none',
                       borderRadius: '4px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
                       cursor: 'pointer',
                     }}
                   >
@@ -472,29 +685,21 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             )}
           </div>
 
-          {/* Highlight / Background */}
+          {/* Highlight Badge Picker */}
           <div style={{ position: 'relative' }}>
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 setShowHighlightPicker(!showHighlightPicker);
-                setShowSizePicker(false);
                 setShowColorPicker(false);
+                setShowSizePicker(false);
                 setShowEmojiPicker(false);
               }}
-              title="Highlight Background"
-              style={{
-                ...toolbarBtnStyle,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 8px',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-              }}
+              title="Highlight Text with Badge"
+              style={toolbarBtnStyle}
             >
               <Highlighter size={14} color="#D97706" />
-              <span>Highlight</span>
             </button>
 
             {showHighlightPicker && (
@@ -509,19 +714,20 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
                 zIndex: 100,
                 padding: '8px',
-                width: '170px',
+                width: '180px',
               }}>
                 <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748B', marginBottom: '6px', textTransform: 'uppercase' }}>
-                  Highlight Styles
+                  Highlight Backgrounds
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {PRESET_HIGHLIGHTS.map((h) => (
                     <button
                       key={h.name}
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => applyHighlight(h.bg, h.color)}
                       style={{
-                        padding: '4px 8px',
+                        padding: '5px 8px',
                         borderRadius: '4px',
                         border: '1px solid rgba(0,0,0,0.06)',
                         backgroundColor: h.bg,
@@ -544,6 +750,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <div style={{ position: 'relative' }}>
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 setShowEmojiPicker(!showEmojiPicker);
                 setShowSizePicker(false);
@@ -577,6 +784,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   <button
                     key={em}
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => insertEmoji(em)}
                     style={{
                       fontSize: '1rem',
@@ -601,6 +809,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           {/* Clear Formatting */}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={clearFormatting}
             title="Clear formatting on selection (or all)"
             style={{
@@ -614,72 +823,89 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           </button>
         </div>
 
-        {/* Input area or Live Preview */}
-        {activeTab === 'edit' ? (
-          <div>
-            {multiline ? (
-              <textarea
-                ref={textareaRef}
-                rows={rows}
-                value={value}
-                required={required}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
+        {/* Editor Area */}
+        {mode === 'visual' ? (
+          <div style={{ position: 'relative', width: '100%' }}>
+            {/* Overlay Placeholder when empty */}
+            {isValueEmpty && (
+              <div
+                onClick={() => contentRef.current?.focus()}
                 style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: '0.88rem',
-                  color: '#0F172A',
-                  fontFamily: 'inherit',
-                  resize: 'vertical',
+                  position: 'absolute',
+                  top: '10px',
+                  left: '12px',
+                  right: '12px',
+                  color: '#94A3B8',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                  fontSize: multiline ? '0.88rem' : '0.92rem',
                   lineHeight: 1.6,
-                }}
-              />
-            ) : (
-              <input
-                ref={inputRef}
-                type="text"
-                value={value}
-                required={required}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: '0.92rem',
-                  color: '#0F172A',
                   fontFamily: 'inherit',
-                  fontWeight: 500,
+                  whiteSpace: multiline ? 'pre-wrap' : 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
                 }}
-              />
+              >
+                {placeholder || 'Click here to start typing...'}
+              </div>
             )}
+
+            {/* WYSIWYG Editable Visual Preview Container */}
+            <div
+              ref={contentRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={handleContentInput}
+              onKeyUp={saveSelection}
+              onMouseUp={saveSelection}
+              onSelect={saveSelection}
+              onTouchEnd={saveSelection}
+              onKeyDown={(e) => {
+                if (!multiline && e.key === 'Enter') {
+                  e.preventDefault();
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                outline: 'none',
+                fontSize: multiline ? '0.88rem' : '0.92rem',
+                color: '#0F172A',
+                fontFamily: 'inherit',
+                minHeight: multiline ? `${Math.max(80, rows * 24)}px` : '42px',
+                lineHeight: 1.6,
+                whiteSpace: multiline ? 'pre-wrap' : 'normal',
+                wordBreak: 'break-word',
+              }}
+            />
           </div>
         ) : (
-          <div style={{
-            padding: '14px 16px',
-            minHeight: multiline ? '90px' : '46px',
-            backgroundColor: '#F8FAFC',
-            fontSize: multiline ? '0.92rem' : '1.1rem',
-            lineHeight: 1.6,
-            color: '#0F172A',
-          }}>
-            {value.trim() ? (
-              <FormattedText text={value} />
-            ) : (
-              <span style={{ color: '#94A3B8', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                Preview will appear here when you enter text...
-              </span>
-            )}
-          </div>
+          /* HTML Code Mode: Direct Raw HTML editing */
+          <textarea
+            ref={textareaRef}
+            rows={rows || 3}
+            value={value}
+            required={required}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: 'none',
+              outline: 'none',
+              fontSize: '0.85rem',
+              color: '#0F172A',
+              fontFamily: 'monospace',
+              resize: 'vertical',
+              lineHeight: 1.5,
+              backgroundColor: '#FAFAFA',
+            }}
+          />
         )}
       </div>
 
-      {/* Helpful Live Visual Preview Bar underneath when in edit mode */}
-      {activeTab === 'edit' && value.trim() && /<[a-z][\s\S]*>/i.test(value) && (
+      {/* Helpful Live Visual Preview Bar underneath when formatting is applied */}
+      {value.trim() && /<[a-z][\s\S]*>/i.test(value) && (
         <div style={{
           marginTop: '6px',
           padding: '6px 10px',

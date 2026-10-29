@@ -1,31 +1,53 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Search, CheckCircle2, Truck, AlertCircle } from 'lucide-react';
+import { X, Search, CheckCircle2, Truck, AlertCircle, Loader2 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { Order, OrderStatus } from '../../types/admin';
+import { trackApiOrder } from '../../services/api';
 
 export const TrackOrderModal: React.FC = () => {
   const { isTrackOrderOpen, setIsTrackOrderOpen, orders } = useShop();
   const [orderQuery, setOrderQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+  const [isSearchingApi, setIsSearchingApi] = useState(false);
   const [foundOrder, setFoundOrder] = useState<Order | null>(null);
 
   if (!isTrackOrderOpen) return null;
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    const query = orderQuery.trim().toUpperCase();
+    const query = orderQuery.trim();
     if (!query) return;
 
     setHasSearched(true);
+    const upperQuery = query.toUpperCase();
     const matched = orders.find(
       (o) =>
-        o.orderNumber.toUpperCase() === query ||
+        o.orderNumber.toUpperCase() === upperQuery ||
         o.customerPhone.includes(query) ||
         o.id === query
     );
-    setFoundOrder(matched || null);
+
+    if (matched) {
+      setFoundOrder(matched);
+      return;
+    }
+
+    // Query backend PostgreSQL database
+    setIsSearchingApi(true);
+    try {
+      const res = await trackApiOrder(query);
+      if (res.success && res.data) {
+        setFoundOrder(res.data);
+      } else {
+        setFoundOrder(null);
+      }
+    } catch {
+      setFoundOrder(null);
+    } finally {
+      setIsSearchingApi(false);
+    }
   };
 
   const getStatusStepIndex = (status: OrderStatus) => {
@@ -155,8 +177,14 @@ export const TrackOrderModal: React.FC = () => {
               }}
             />
           </div>
-          <button type="submit" className="btn btn-primary" style={{ padding: '10px 20px' }}>
-            Track
+          <button 
+            type="submit" 
+            disabled={isSearchingApi}
+            className="btn btn-primary" 
+            style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            {isSearchingApi ? <Loader2 size={16} className="animate-spin" /> : null}
+            <span>{isSearchingApi ? 'Searching...' : 'Track'}</span>
           </button>
         </form>
 

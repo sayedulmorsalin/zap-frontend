@@ -68,6 +68,7 @@ export interface Product {
   inStock: boolean;
   variants?: ProductVariant[];
   colorVariants?: ColorVariantGroup[];
+  createdAt?: string;
 }
 
 export interface CartItem {

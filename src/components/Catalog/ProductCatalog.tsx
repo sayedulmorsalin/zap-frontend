@@ -125,10 +125,18 @@ export const ProductCatalog: React.FC = () => {
       .sort((a, b) => {
         if (sortBy === 'price-asc') return a.price - b.price;
         if (sortBy === 'price-desc') return b.price - a.price;
-        if (sortBy === 'rating') return b.rating - a.rating;
-        if (sortBy === 'newest') return (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);
+        if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+        if (sortBy === 'newest') {
+          const diff = (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);
+          if (diff !== 0) return diff;
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return timeB - timeA;
+        }
         // default: featured
-        return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
+        const featuredDiff = (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
+        if (featuredDiff !== 0) return featuredDiff;
+        return (b.rating || 0) - (a.rating || 0);
       });
   }, [
     products,

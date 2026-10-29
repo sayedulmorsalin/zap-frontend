@@ -27,6 +27,8 @@ import {
   fetchApiOrders,
   fetchApiCustomers,
   createApiOrder,
+  updateApiOrderStatus,
+  deleteApiOrder,
   createApiProduct,
   updateApiProduct,
   deleteApiProduct,
@@ -569,16 +571,49 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Orders CRUD ──
   const addOrder = (order: Order) => {
     setOrders((prev) => [order, ...prev]);
-    // Synchronize to PostgreSQL backend
+    // Synchronize full order details to PostgreSQL backend
     createApiOrder({
+      ...order,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      customerEmail: order.customerEmail,
+      shippingAddress: order.shippingAddress,
+      city: order.city,
+      division: order.division,
+      subtotal: order.subtotal,
+      shippingCost: order.shippingCost,
+      discount: order.discount,
+      total: order.total,
       paymentMethod: order.paymentMethod,
-      notes: `Shopper: ${order.customerName} | Phone: ${order.customerPhone} | Delivery Address: ${order.shippingAddress}`,
+      paymentStatus: order.paymentStatus,
+      orderNumber: order.orderNumber,
+      notes: order.notes,
       couponCode: order.couponCode,
+      courierName: order.courierName,
+      trackingNumber: order.trackingNumber,
+      estimatedDelivery: order.estimatedDelivery,
       items: order.items.map((it) => ({
         productId: it.productId,
         quantity: it.quantity,
+        size: it.size,
+        color: it.color,
+        unitPrice: it.unitPrice,
+        name: it.product?.name,
+        image: typeof it.product?.images?.[0] === 'string' 
+          ? it.product.images[0] 
+          : (it.product?.images?.[0] as unknown as { url?: string })?.url || '',
       })),
-    }).catch(() => {});
+    })
+      .then((res) => {
+        if (res.success) {
+          console.log('[Order Sync] Successfully synchronized order to PostgreSQL backend:', res.data);
+        } else {
+          console.warn('[Order Sync Notice]:', res.message);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Order Sync Error]:', err);
+      });
   };
 
   const updateOrderStatus = (
@@ -599,11 +634,13 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       })
     );
+    updateApiOrderStatus(orderId, status, courierName, trackingNumber).catch(() => {});
     showToast(`Order status updated to ${status}`);
   };
 
   const deleteOrder = (orderId: string) => {
     setOrders((prev) => prev.filter((ord) => ord.id !== orderId));
+    deleteApiOrder(orderId).catch(() => {});
     showToast('Order record removed.');
   };
 
@@ -677,7 +714,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const reorderHeroSlides = (newSlides: HeroSlide[]) => {
     setHeroSlides(newSlides);
-    saveAllApiBanners(newSlides, []);
+    saveAllApiBanners(newSlides, promoBanners);
     showToast('Hero slides reordered and synced.');
   };
 

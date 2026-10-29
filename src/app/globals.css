@@ -563,6 +563,10 @@ body {
     gap: 20px !important;
   }
 
+  .desktop-zoom-hint {
+    display: none !important;
+  }
+
   .product-gallery-container {
     flex-direction: column-reverse !important;
     gap: 10px !important;

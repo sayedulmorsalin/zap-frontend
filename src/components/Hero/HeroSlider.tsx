@@ -47,9 +47,10 @@ export const HeroSlider: React.FC = () => {
   // Filter active slides and sort by order
   const activeSlides = (heroSlides || [])
     .filter((s) => s.isActive)
-    .sort((a, b) => a.order - b.order);
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-  const slides = activeSlides.length > 0 ? activeSlides : heroSlides;
+  const sortedFallback = [...(heroSlides || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+  const slides = activeSlides.length > 0 ? activeSlides : sortedFallback;
 
   // Auto-play timer
   useEffect(() => {

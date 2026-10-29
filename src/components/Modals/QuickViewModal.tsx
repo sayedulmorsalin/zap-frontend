@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { 
@@ -12,7 +12,10 @@ import {
   RotateCcw, 
   ShieldCheck, 
   Ruler,
-  ExternalLink 
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { FormattedText, stripHtml } from '../Common/FormattedText';
@@ -32,6 +35,25 @@ export const QuickViewModal: React.FC = () => {
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
+
+  // Zoom & Swipe States
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const lastTouchTimeRef = useRef(0);
+  const lastWheelTimeRef = useRef(0);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      setIsTouchDevice(hasTouch);
+    }
+  }, []);
 
   if (!quickViewProduct) return null;
 
@@ -94,6 +116,107 @@ export const QuickViewModal: React.FC = () => {
     router.push('/checkout');
   };
 
+  // Image Navigation Handlers
+  const handleNextImage = () => {
+    if (activeImages.length <= 1) return;
+    setActiveImageIdx((prev) => (prev + 1) % activeImages.length);
+  };
+
+  const handlePrevImage = () => {
+    if (activeImages.length <= 1) return;
+    setActiveImageIdx((prev) => (prev - 1 + activeImages.length) % activeImages.length);
+  };
+
+  // PC Hover Zoom Handlers
+  const handleMouseEnter = () => {
+    if (isTouchDevice || Date.now() - lastTouchTimeRef.current < 1000) return;
+    setIsZoomed(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isTouchDevice || Date.now() - lastTouchTimeRef.current < 1000) return;
+    if (!imageContainerRef.current) return;
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    setZoomPos({ x, y });
+    if (!isZoomed) setIsZoomed(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsZoomed(false);
+  };
+
+  // Mobile / Touch Swipe Handlers
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    lastTouchTimeRef.current = Date.now();
+    setIsZoomed(false);
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    setIsDragging(true);
+    setDragOffset(0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    lastTouchTimeRef.current = Date.now();
+    if (!touchStartRef.current) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+
+    if (Math.abs(deltaX) > Math.abs(deltaY) * 0.7) {
+      const dampedDelta = activeImages.length <= 1 ? deltaX * 0.2 : deltaX;
+      setDragOffset(dampedDelta);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    lastTouchTimeRef.current = Date.now();
+    setIsDragging(false);
+    if (!touchStartRef.current) {
+      setDragOffset(0);
+      return;
+    }
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    const elapsed = Date.now() - touchStartRef.current.time;
+
+    const isHorizontalSwipe =
+      Math.abs(deltaX) > Math.abs(deltaY) &&
+      (Math.abs(deltaX) > 40 || (Math.abs(deltaX) > 20 && elapsed < 250));
+
+    if (isHorizontalSwipe && activeImages.length > 1) {
+      if (deltaX < 0) {
+        handleNextImage();
+      } else {
+        handlePrevImage();
+      }
+    }
+    setDragOffset(0);
+    touchStartRef.current = null;
+  };
+
+  const handleTouchCancel = () => {
+    setIsDragging(false);
+    setDragOffset(0);
+    touchStartRef.current = null;
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (Math.abs(e.deltaX) > 30 && activeImages.length > 1) {
+      const now = Date.now();
+      if (now - lastWheelTimeRef.current > 300) {
+        lastWheelTimeRef.current = now;
+        if (e.deltaX > 0) {
+          handleNextImage();
+        } else {
+          handlePrevImage();
+        }
+      }
+    }
+  };
+
   return (
     <div className="modal-backdrop" onClick={() => setQuickViewProduct(null)}>
       <div
@@ -151,36 +274,220 @@ export const QuickViewModal: React.FC = () => {
         }} className="quickview-grid">
           {/* Left: Product Images Gallery */}
           <div>
-            <div style={{
-              width: '100%',
-              aspectRatio: '1/1',
-              borderRadius: '16px',
-              backgroundColor: '#F8FAFC',
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1px solid #E2E8F0',
-              marginBottom: '12px',
-              position: 'relative',
-            }}>
+            <div
+              ref={imageContainerRef}
+              onMouseEnter={handleMouseEnter}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchCancel}
+              onWheel={handleWheel}
+              style={{
+                width: '100%',
+                aspectRatio: '1/1',
+                borderRadius: '16px',
+                backgroundColor: '#F8FAFC',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid #E2E8F0',
+                marginBottom: '12px',
+                position: 'relative',
+                cursor: isZoomed ? 'crosshair' : 'zoom-in',
+                userSelect: 'none',
+                touchAction: 'pan-y',
+              }}
+            >
               <Image
                 src={activeImages[activeImageIdx] || activeImages[0] || product.images[0]}
                 alt={`${stripHtml(product.name)} - ${currentColor}`}
                 width={500}
                 height={500}
                 unoptimized
+                draggable={false}
                 style={{
                   width: '92%',
                   height: '92%',
                   objectFit: 'contain',
+                  transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                  transform: isZoomed
+                    ? 'scale(2.3)'
+                    : dragOffset !== 0
+                      ? `translateX(${dragOffset}px)`
+                      : 'scale(1)',
+                  transition: isZoomed
+                    ? 'transform 0.08s ease-out'
+                    : isDragging
+                      ? 'none'
+                      : 'transform 0.25s ease-out, opacity 0.2s ease',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
                 }}
               />
 
-              {product.discountPercentage && product.discountPercentage > 0 && (
+              {/* Desktop Hover to Zoom Hint */}
+              {!isZoomed && (
+                <div
+                  className="desktop-zoom-hint"
+                  style={{
+                    position: 'absolute',
+                    bottom: '12px',
+                    left: '12px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                    backdropFilter: 'blur(4px)',
+                    color: '#FFFFFF',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    fontSize: '0.72rem',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    pointerEvents: 'none',
+                    zIndex: 4,
+                  }}
+                >
+                  <ZoomIn size={12} />
+                  <span>Hover to zoom</span>
+                </div>
+              )}
+
+              {/* Discount Badge */}
+              {!isZoomed && product.discountPercentage && product.discountPercentage > 0 && (
                 <span className="badge-discount" suppressHydrationWarning>
                   -{product.discountPercentage}% OFF
                 </span>
+              )}
+
+              {/* Image Counter Badge (when multiple images) */}
+              {!isZoomed && activeImages.length > 1 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.55)',
+                  backdropFilter: 'blur(4px)',
+                  color: '#FFFFFF',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  padding: '3px 8px',
+                  borderRadius: '16px',
+                  pointerEvents: 'none',
+                  zIndex: 4,
+                  letterSpacing: '0.04em',
+                }}>
+                  {activeImageIdx + 1} / {activeImages.length}
+                </div>
+              )}
+
+              {/* Previous / Next Arrow Buttons */}
+              {!isZoomed && activeImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrevImage();
+                    }}
+                    aria-label="Previous image"
+                    style={{
+                      position: 'absolute',
+                      left: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      backdropFilter: 'blur(4px)',
+                      border: '1px solid rgba(0,0,0,0.08)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: '#111827',
+                      zIndex: 5,
+                      transition: 'transform 0.15s ease',
+                    }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNextImage();
+                    }}
+                    aria-label="Next image"
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      backdropFilter: 'blur(4px)',
+                      border: '1px solid rgba(0,0,0,0.08)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: '#111827',
+                      zIndex: 5,
+                      transition: 'transform 0.15s ease',
+                    }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </>
+              )}
+
+              {/* Bottom Pagination Dots */}
+              {!isZoomed && activeImages.length > 1 && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '12px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                  backdropFilter: 'blur(6px)',
+                  padding: '3px 8px',
+                  borderRadius: '16px',
+                  zIndex: 5,
+                }}>
+                  {activeImages.map((_, dotIdx) => (
+                    <button
+                      key={dotIdx}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveImageIdx(dotIdx);
+                      }}
+                      aria-label={`Go to slide ${dotIdx + 1}`}
+                      style={{
+                        width: activeImageIdx === dotIdx ? '14px' : '5px',
+                        height: '5px',
+                        borderRadius: '3px',
+                        backgroundColor: activeImageIdx === dotIdx ? '#D32F2F' : 'rgba(255, 255, 255, 0.7)',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        transition: 'all 0.25s ease',
+                      }}
+                    />
+                  ))}
+                </div>
               )}
             </div>
 

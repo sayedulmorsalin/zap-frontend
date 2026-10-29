@@ -15,6 +15,8 @@ import {
   MessageCircle, 
   ShoppingBag, 
   ChevronRight,
+  ChevronLeft,
+  ZoomIn,
   ExternalLink,
   Info
 } from 'lucide-react';
@@ -95,6 +97,126 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   const [activeTab, setActiveTab] = useState<'description' | 'reviews' | 'sizeguide'>('description');
   const [showOptionsWarning, setShowOptionsWarning] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Zoom & Swipe States
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  const imageContainerRef = React.useRef<HTMLDivElement>(null);
+  const touchStartRef = React.useRef<{ x: number; y: number; time: number } | null>(null);
+  const lastTouchTimeRef = React.useRef(0);
+  const lastWheelTimeRef = React.useRef(0);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      setIsTouchDevice(hasTouch);
+    }
+  }, []);
+
+  // Image Navigation Handlers
+  const handleNextImage = () => {
+    if (activeImages.length <= 1) return;
+    setActiveImageIdx((prev) => (prev + 1) % activeImages.length);
+  };
+
+  const handlePrevImage = () => {
+    if (activeImages.length <= 1) return;
+    setActiveImageIdx((prev) => (prev - 1 + activeImages.length) % activeImages.length);
+  };
+
+  // PC Hover Zoom Handlers
+  const handleMouseEnter = () => {
+    if (isTouchDevice || Date.now() - lastTouchTimeRef.current < 1000) return;
+    setIsZoomed(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isTouchDevice || Date.now() - lastTouchTimeRef.current < 1000) return;
+    if (!imageContainerRef.current) return;
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    setZoomPos({ x, y });
+    if (!isZoomed) setIsZoomed(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsZoomed(false);
+  };
+
+  // Mobile / Touch Swipe Handlers
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    lastTouchTimeRef.current = Date.now();
+    setIsZoomed(false);
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    setIsDragging(true);
+    setDragOffset(0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    lastTouchTimeRef.current = Date.now();
+    if (!touchStartRef.current) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+
+    if (Math.abs(deltaX) > Math.abs(deltaY) * 0.7) {
+      const dampedDelta = activeImages.length <= 1 ? deltaX * 0.2 : deltaX;
+      setDragOffset(dampedDelta);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    lastTouchTimeRef.current = Date.now();
+    setIsDragging(false);
+    if (!touchStartRef.current) {
+      setDragOffset(0);
+      return;
+    }
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    const elapsed = Date.now() - touchStartRef.current.time;
+
+    const isHorizontalSwipe =
+      Math.abs(deltaX) > Math.abs(deltaY) &&
+      (Math.abs(deltaX) > 40 || (Math.abs(deltaX) > 20 && elapsed < 250));
+
+    if (isHorizontalSwipe && activeImages.length > 1) {
+      if (deltaX < 0) {
+        handleNextImage();
+      } else {
+        handlePrevImage();
+      }
+    }
+    setDragOffset(0);
+    touchStartRef.current = null;
+  };
+
+  const handleTouchCancel = () => {
+    setIsDragging(false);
+    setDragOffset(0);
+    touchStartRef.current = null;
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (Math.abs(e.deltaX) > 30 && activeImages.length > 1) {
+      const now = Date.now();
+      if (now - lastWheelTimeRef.current > 300) {
+        lastWheelTimeRef.current = now;
+        if (e.deltaX > 0) {
+          handleNextImage();
+        } else {
+          handlePrevImage();
+        }
+      }
+    }
+  };
 
   // Real customer reviews state
   const [reviewsList, setReviewsList] = useState<ProductReview[]>([]);
@@ -430,19 +552,33 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               ))}
             </div>
 
-            {/* Main Image Display with SKU watermark */}
-            <div style={{
-              flex: 1,
-              position: 'relative',
-              aspectRatio: '1/1',
-              backgroundColor: '#1E232A',
-              borderRadius: '10px',
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-            }}>
+            {/* Main Image Display with SKU watermark, Touch Swipe & Desktop Zoom */}
+            <div
+              ref={imageContainerRef}
+              onMouseEnter={handleMouseEnter}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchCancel}
+              onWheel={handleWheel}
+              style={{
+                flex: 1,
+                position: 'relative',
+                aspectRatio: '1/1',
+                backgroundColor: '#1E232A',
+                borderRadius: '10px',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                cursor: isZoomed ? 'crosshair' : 'zoom-in',
+                userSelect: 'none',
+                touchAction: 'pan-y',
+              }}
+            >
               <Image
                 src={activeImages[activeImageIdx] || activeImages[0] || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80'}
                 alt={stripHtml(product.name)}
@@ -450,16 +586,57 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                 height={700}
                 priority
                 unoptimized
+                draggable={false}
                 style={{
                   width: '100%',
                   height: '100%',
                   objectFit: 'contain',
-                  transition: 'opacity 0.25s ease',
+                  transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                  transform: isZoomed
+                    ? 'scale(2.3)'
+                    : dragOffset !== 0
+                      ? `translateX(${dragOffset}px)`
+                      : 'scale(1)',
+                  transition: isZoomed
+                    ? 'transform 0.08s ease-out'
+                    : isDragging
+                      ? 'none'
+                      : 'transform 0.25s ease-out, opacity 0.2s ease',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
                 }}
               />
 
+              {/* Desktop Hover to Zoom Hint */}
+              {!isZoomed && (
+                <div
+                  className="desktop-zoom-hint"
+                  style={{
+                    position: 'absolute',
+                    bottom: '16px',
+                    left: '16px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                    backdropFilter: 'blur(4px)',
+                    color: '#FFFFFF',
+                    padding: '5px 11px',
+                    borderRadius: '20px',
+                    fontSize: '0.74rem',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    pointerEvents: 'none',
+                    zIndex: 4,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                  }}
+                >
+                  <ZoomIn size={13} />
+                  <span>Hover to zoom</span>
+                </div>
+              )}
+
               {/* Bottom Right SKU Watermark/Badge (only when not embedded in image) */}
-              {!activeImages[activeImageIdx]?.includes('SKU Images') && product.sku && (
+              {!isZoomed && !activeImages[activeImageIdx]?.includes('SKU Images') && product.sku && (
                 <div style={{
                   position: 'absolute',
                   bottom: '16px',
@@ -470,21 +647,171 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   letterSpacing: '0.04em',
                   textShadow: '0 2px 4px rgba(0,0,0,0.8)',
                   pointerEvents: 'none',
+                  zIndex: 3,
                 }}>
                   {product.sku}
                 </div>
               )}
 
               {/* Discount / New Badges */}
-              {product.discountPercentage && product.discountPercentage > 0 && (
+              {!isZoomed && product.discountPercentage && product.discountPercentage > 0 && (
                 <span className="badge-discount" suppressHydrationWarning>
                   -{product.discountPercentage}% OFF
                 </span>
               )}
 
+              {/* Image Counter Badge (when multiple images) */}
+              {!isZoomed && activeImages.length > 1 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '66px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.55)',
+                  backdropFilter: 'blur(4px)',
+                  color: '#FFFFFF',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  pointerEvents: 'none',
+                  zIndex: 4,
+                  letterSpacing: '0.04em',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                }}>
+                  {activeImageIdx + 1} / {activeImages.length}
+                </div>
+              )}
+
+              {/* Previous / Next Arrow Buttons (for fast navigation on PC and mobile) */}
+              {!isZoomed && activeImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrevImage();
+                    }}
+                    aria-label="Previous image"
+                    style={{
+                      position: 'absolute',
+                      left: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      backdropFilter: 'blur(4px)',
+                      border: '1px solid rgba(0,0,0,0.08)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: '#111827',
+                      zIndex: 5,
+                      transition: 'transform 0.15s ease, background-color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                      e.currentTarget.style.transform = 'translateY(-50%) scale(1.08)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                      e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                    }}
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNextImage();
+                    }}
+                    aria-label="Next image"
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      backdropFilter: 'blur(4px)',
+                      border: '1px solid rgba(0,0,0,0.08)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: '#111827',
+                      zIndex: 5,
+                      transition: 'transform 0.15s ease, background-color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                      e.currentTarget.style.transform = 'translateY(-50%) scale(1.08)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                      e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                    }}
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </>
+              )}
+
+              {/* Bottom Pagination Dots */}
+              {!isZoomed && activeImages.length > 1 && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '14px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                  backdropFilter: 'blur(6px)',
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  zIndex: 5,
+                  pointerEvents: 'auto',
+                }}>
+                  {activeImages.map((_, dotIdx) => (
+                    <button
+                      key={dotIdx}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveImageIdx(dotIdx);
+                      }}
+                      aria-label={`Go to slide ${dotIdx + 1}`}
+                      style={{
+                        width: activeImageIdx === dotIdx ? '16px' : '6px',
+                        height: '6px',
+                        borderRadius: '3px',
+                        backgroundColor: activeImageIdx === dotIdx ? '#D32F2F' : 'rgba(255, 255, 255, 0.7)',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        transition: 'all 0.25s ease',
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+
               {/* Wishlist floating toggle */}
               <button
-                onClick={() => toggleWishlist(product.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleWishlist(product.id);
+                }}
                 aria-label="Wishlist toggle"
                 style={{
                   position: 'absolute',
@@ -500,8 +827,10 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   justifyContent: 'center',
                   cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  transition: 'transform 0.15s ease',
-                  zIndex: 2,
+                  transition: 'transform 0.15s ease, opacity 0.2s ease',
+                  zIndex: 6,
+                  opacity: isZoomed ? 0 : 1,
+                  pointerEvents: isZoomed ? 'none' : 'auto',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
                 onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
