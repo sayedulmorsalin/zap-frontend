@@ -19,6 +19,7 @@ import {
   Zap,
   Mail,
   Send,
+  Activity,
 } from 'lucide-react';
 import { AuditLogEntry } from '../../lib/adminSecurity';
 
@@ -526,6 +527,42 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
                   </span>
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Rate Limiting Active Tiers Card */}
+          <div style={{
+            backgroundColor: '#F8FAFC',
+            borderRadius: '12px',
+            padding: '16px',
+            border: '1px solid #E2E8F0',
+            marginBottom: '16px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontWeight: 800, color: '#0F172A' }}>
+                <Activity size={16} color="#16A34A" />
+                <span>User Request Rate Limiting</span>
+              </div>
+              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#15803D', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: '6px' }}>
+                ENFORCED (429)
+              </span>
+            </div>
+            <p style={{ fontSize: '0.72rem', color: '#64748B', margin: '0 0 10px', lineHeight: 1.4 }}>
+              Sliding-window IP throttling stops bot scrapers, DDoS flooding, and checkout abuse:
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.72rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', backgroundColor: '#FFFFFF', borderRadius: '6px', border: '1px solid #F1F5F9' }}>
+                <span style={{ fontWeight: 600, color: '#334155' }}>Admin Auth Endpoints</span>
+                <span style={{ fontWeight: 700, color: '#D32F2F' }}>20 req/min</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', backgroundColor: '#FFFFFF', borderRadius: '6px', border: '1px solid #F1F5F9' }}>
+                <span style={{ fontWeight: 600, color: '#334155' }}>Checkout &amp; Orders</span>
+                <span style={{ fontWeight: 700, color: '#D97706' }}>40 req/min</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', backgroundColor: '#FFFFFF', borderRadius: '6px', border: '1px solid #F1F5F9' }}>
+                <span style={{ fontWeight: 600, color: '#334155' }}>General Storefront Pages</span>
+                <span style={{ fontWeight: 700, color: '#16A34A' }}>120 req/min</span>
+              </div>
             </div>
           </div>
 
