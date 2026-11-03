@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { currentPasskey, newPasskey, newPin } = body;
+    const { currentPasskey, newPasskey, newPin, newEmail } = body;
 
     // Must verify current passkey
     if (!currentPasskey || !timingSafeCompare(currentPasskey.trim(), getAdminSecret())) {
@@ -68,19 +68,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    setRuntimeCredentials(newPasskey, newPin);
+    if (newEmail) {
+      if (!newEmail.includes('@') || newEmail.trim().length < 5) {
+        return NextResponse.json(
+          { success: false, error: 'Please enter a valid recipient email address.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    setRuntimeCredentials(newPasskey, newPin, newEmail);
 
     addAuditLog({
       event: 'CREDENTIALS_CHANGED',
       status: 'ALERT',
       ip,
       userAgent,
-      details: `Administrator credentials updated (Passkey updated: ${Boolean(newPasskey)}, PIN updated: ${Boolean(newPin)}).`,
+      details: `Administrator credentials updated (Passkey: ${Boolean(newPasskey)}, PIN: ${Boolean(newPin)}, 2FA Email: ${Boolean(newEmail)}).`,
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Administrative security credentials updated successfully.',
+      message: 'Administrative security credentials & email settings updated successfully.',
     });
   } catch (err) {
     console.error('Update credentials error:', err);
@@ -90,4 +99,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

@@ -15,7 +15,8 @@ import {
   RefreshCw,
   LogOut,
   Fingerprint,
-  CheckCircle2,
+  Mail,
+  Send,
 } from 'lucide-react';
 import './admin.css';
 import { AdminTab } from '../../types/admin';
@@ -47,6 +48,12 @@ export default function AdminPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Email 2FA dynamic state
+  const [targetEmail, setTargetEmail] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [isResending, setIsResending] = useState(false);
+  const [resendNotice, setResendNotice] = useState('');
+
   // Rate-limiting / lockout state
   const [isLockedOut, setIsLockedOut] = useState(false);
   const [lockoutSecondsRemaining, setLockoutSecondsRemaining] = useState(0);
@@ -64,6 +71,10 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/auth/status');
       const data = await res.json();
+
+      if (data.maskedEmail) {
+        setTargetEmail(data.maskedEmail);
+      }
 
       if (data.locked) {
         setIsLockedOut(true);
@@ -107,7 +118,18 @@ export default function AdminPage() {
     return () => clearInterval(interval);
   }, [isLockedOut, lockoutSecondsRemaining]);
 
-  // 3. User Activity Listener for Auto-Lock
+  // 3. Resend OTP Cooldown Timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
+
+  // 4. User Activity Listener for Auto-Lock
   useEffect(() => {
     if (authStage !== 'authenticated' || isConsoleLocked) return;
 
@@ -151,9 +173,14 @@ export default function AdminPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        if (data.email) {
+          setTargetEmail(data.email);
+        }
         setAuthStage('pin');
         setPasskeyInput('');
         setErrorMessage('');
+        setResendCooldown(60); // 60s cooldown initial
+        showToast('Passkey verified. 2FA PIN dispatched via email.');
       } else {
         if (data.locked) {
           setIsLockedOut(true);
@@ -208,6 +235,39 @@ export default function AdminPage() {
     }
   };
 
+  // Resend 2FA PIN via Email
+  const handleResendPin = async () => {
+    if (resendCooldown > 0 || isResending) return;
+
+    setIsResending(true);
+    setResendNotice('');
+    setErrorMessage('');
+
+    try {
+      const res = await fetch('/api/admin/auth/resend-pin', {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setResendCooldown(60);
+        if (data.email) setTargetEmail(data.email);
+        setResendNotice(`A fresh 6-digit PIN was sent to ${data.email || targetEmail}.`);
+        showToast('Fresh 2FA PIN sent to your email.');
+      } else {
+        if (data.requiresLogin) {
+          setAuthStage('passkey');
+        }
+        setErrorMessage(data.error || 'Failed to dispatch new PIN.');
+      }
+    } catch {
+      setErrorMessage('Network error while resending PIN.');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   // Quick Unlock from Console Lock Screen
   const handleQuickUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,7 +292,6 @@ export default function AdminPage() {
         lastActivityRef.current = Date.now();
         showToast('Console unlocked.');
       } else {
-        // If session was destroyed, prompt full login
         if (data.requiresLogin) {
           setIsConsoleLocked(false);
           setAuthStage('passkey');
@@ -260,6 +319,7 @@ export default function AdminPage() {
     setPinInput('');
     setUnlockPinInput('');
     setErrorMessage('');
+    setTargetEmail('');
     showToast('Admin console secured and locked.');
   };
 
@@ -327,7 +387,6 @@ export default function AdminPage() {
         position: 'relative',
         overflow: 'hidden',
       }}>
-        {/* Glow */}
         <div style={{
           position: 'absolute',
           top: '20%',
@@ -352,7 +411,6 @@ export default function AdminPage() {
           position: 'relative',
           zIndex: 10,
         }}>
-          {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <div style={{
               width: '56px',
@@ -382,7 +440,7 @@ export default function AdminPage() {
               ZAP Management Console
             </h2>
             <p style={{ fontSize: '0.82rem', color: '#94A3B8', marginTop: '6px', margin: 0 }}>
-              Enter your master administrative passkey to initiate verification.
+              Enter master administrative passkey to initiate unique 2FA PIN dispatch.
             </p>
           </div>
 
@@ -495,11 +553,11 @@ export default function AdminPage() {
               {isSubmitting ? (
                 <>
                   <RefreshCw size={16} className="spin" />
-                  <span>Validating Passkey...</span>
+                  <span>Validating Passkey &amp; Sending PIN...</span>
                 </>
               ) : (
                 <>
-                  <span>Continue to 2FA PIN</span>
+                  <span>Send 2FA PIN to Email</span>
                   <ArrowRight size={16} />
                 </>
               )}
@@ -541,7 +599,7 @@ export default function AdminPage() {
     );
   }
 
-  // --- Step 2: 6-Digit Security PIN (2FA Layer) ---
+  // --- Step 2: Dynamic Email 2FA PIN Gate ---
   if (authStage === 'pin') {
     return (
       <div style={{
@@ -570,7 +628,7 @@ export default function AdminPage() {
 
         <div style={{
           width: '100%',
-          maxWidth: '440px',
+          maxWidth: '460px',
           backgroundColor: '#121217',
           border: '1px solid #27272A',
           borderRadius: '20px',
@@ -593,7 +651,7 @@ export default function AdminPage() {
               margin: '0 auto 16px',
               boxShadow: '0 8px 24px rgba(22, 163, 74, 0.35)',
             }}>
-              <Fingerprint size={28} />
+              <Mail size={28} />
             </div>
             <div style={{
               fontSize: '0.72rem',
@@ -603,13 +661,15 @@ export default function AdminPage() {
               textTransform: 'uppercase',
               marginBottom: '4px',
             }}>
-              SECOND FACTOR VERIFICATION (2 OF 2)
+              DYNAMIC EMAIL 2FA VERIFICATION
             </div>
             <h2 style={{ fontSize: '1.45rem', fontWeight: 900, color: '#FFFFFF', margin: 0 }}>
-              6-Digit Security PIN
+              Enter 6-Digit Email PIN
             </h2>
-            <p style={{ fontSize: '0.82rem', color: '#94A3B8', marginTop: '6px', margin: 0 }}>
-              Passkey verified. Enter your executive 6-digit PIN to unlock console access.
+            <p style={{ fontSize: '0.82rem', color: '#94A3B8', marginTop: '6px', margin: 0, lineHeight: 1.5 }}>
+              A unique single-use verification PIN was dispatched to:
+              <br />
+              <strong style={{ color: '#F4F4F5', letterSpacing: '0.02em' }}>{targetEmail || 'Executive Administrator Email'}</strong>
             </p>
           </div>
 
@@ -643,11 +703,27 @@ export default function AdminPage() {
             </div>
           )}
 
+          {/* Resend Notice */}
+          {resendNotice && !errorMessage && (
+            <div style={{
+              backgroundColor: 'rgba(34, 197, 94, 0.12)',
+              border: '1px solid rgba(34, 197, 94, 0.3)',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              marginBottom: '16px',
+              fontSize: '0.78rem',
+              color: '#86EFAC',
+              textAlign: 'center',
+            }}>
+              {resendNotice}
+            </div>
+          )}
+
           {/* PIN Form */}
           <form onSubmit={handlePinSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#E2E8F0', marginBottom: '8px', textAlign: 'center' }}>
-                Enter 6-Digit PIN
+                6-Digit Dynamic PIN (Valid for 10 min)
               </label>
 
               <input
@@ -670,7 +746,7 @@ export default function AdminPage() {
                   border: errorMessage ? '1.5px solid #EF4444' : '1px solid #3F3F46',
                   backgroundColor: '#18181B',
                   color: '#FFFFFF',
-                  fontSize: '1.5rem',
+                  fontSize: '1.6rem',
                   letterSpacing: '0.35em',
                   textAlign: 'center',
                   outline: 'none',
@@ -721,15 +797,15 @@ export default function AdminPage() {
               ) : (
                 <>
                   <Unlock size={16} />
-                  <span>Authorize &amp; Open Console</span>
+                  <span>Verify PIN &amp; Unlock Console</span>
                 </>
               )}
             </button>
           </form>
 
-          {/* Back to passkey option */}
+          {/* Resend PIN Button & Back to Passkey */}
           <div style={{
-            marginTop: '24px',
+            marginTop: '20px',
             paddingTop: '16px',
             borderTop: '1px solid #27272A',
             display: 'flex',
@@ -741,6 +817,7 @@ export default function AdminPage() {
               onClick={() => {
                 setAuthStage('passkey');
                 setErrorMessage('');
+                setResendNotice('');
               }}
               style={{
                 background: 'none',
@@ -758,9 +835,25 @@ export default function AdminPage() {
               <span>Back to Passkey</span>
             </button>
 
-            <span style={{ fontSize: '0.7rem', color: '#52525B' }}>
-              Dual-Factor Active
-            </span>
+            <button
+              type="button"
+              onClick={handleResendPin}
+              disabled={resendCooldown > 0 || isResending}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: resendCooldown > 0 ? '#71717A' : '#EF4444',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <RefreshCw size={12} className={isResending ? 'spin' : ''} />
+              <span>{resendCooldown > 0 ? `Resend Code in ${resendCooldown}s` : 'Resend Code via Email'}</span>
+            </button>
           </div>
         </div>
       </div>

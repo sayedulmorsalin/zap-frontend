@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { verifySessionToken, checkRateLimit } from '../../../../../lib/adminSecurity';
+import { verifySessionToken, checkRateLimit, getAdminEmail } from '../../../../../lib/adminSecurity';
 
 function getClientIp(req: NextRequest): string {
   const forwarded = req.headers.get('x-forwarded-for');
@@ -10,9 +10,18 @@ function getClientIp(req: NextRequest): string {
   return req.headers.get('x-real-ip') || '127.0.0.1';
 }
 
+function maskEmail(email: string): string {
+  const parts = email.split('@');
+  if (parts.length !== 2) return email;
+  const [user, domain] = parts;
+  const visible = user.length > 2 ? user.slice(0, 2) : user.slice(0, 1);
+  return `${visible}***@${domain}`;
+}
+
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
   const rateLimit = checkRateLimit(ip);
+  const currentEmail = getAdminEmail();
 
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get('zap_admin_session')?.value;
@@ -25,6 +34,8 @@ export async function GET(req: NextRequest) {
         authenticated: true,
         role: verified.payload.role,
         sessionId: verified.payload.sessionId,
+        adminEmail: currentEmail,
+        maskedEmail: maskEmail(currentEmail),
         expiresInSeconds: Math.max(0, Math.floor(remainingMs / 1000)),
         locked: false,
       });
@@ -39,6 +50,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         authenticated: false,
         requiresPin: true,
+        adminEmail: currentEmail,
+        maskedEmail: maskEmail(currentEmail),
         locked: !rateLimit.allowed,
         lockoutRemainingSeconds: rateLimit.lockoutRemainingSeconds,
       });
@@ -48,8 +61,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     authenticated: false,
     requiresPin: false,
+    adminEmail: currentEmail,
+    maskedEmail: maskEmail(currentEmail),
     locked: !rateLimit.allowed,
     lockoutRemainingSeconds: rateLimit.lockoutRemainingSeconds,
   });
 }
-

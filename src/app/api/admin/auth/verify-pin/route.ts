@@ -4,10 +4,9 @@ import {
   checkRateLimit,
   recordFailedAttempt,
   resetRateLimit,
-  timingSafeCompare,
-  getAdminPin,
   verifySessionToken,
   signSessionToken,
+  verifyDynamicOtp,
   addAuditLog,
 } from '../../../../../lib/adminSecurity';
 
@@ -40,23 +39,27 @@ export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
   const pendingCookie = cookieStore.get('zap_admin_pending_token')?.value;
 
-  if (!pendingCookie) {
+  // Also check if existing authenticated session is just unlocking from inactivity lock
+  const activeSessionCookie = cookieStore.get('zap_admin_session')?.value;
+  let targetSessionId: string | null = null;
+
+  if (pendingCookie) {
+    const verification = verifySessionToken(pendingCookie);
+    if (verification.valid && verification.payload) {
+      targetSessionId = verification.payload.sessionId;
+    }
+  } else if (activeSessionCookie) {
+    const activeVer = verifySessionToken(activeSessionCookie);
+    if (activeVer.valid && activeVer.payload) {
+      targetSessionId = activeVer.payload.sessionId;
+    }
+  }
+
+  if (!targetSessionId) {
     return NextResponse.json(
       {
         success: false,
         error: 'Security session expired or missing passkey step. Please re-authenticate.',
-        requiresLogin: true,
-      },
-      { status: 401 }
-    );
-  }
-
-  const verification = verifySessionToken(pendingCookie);
-  if (!verification.valid || !verification.payload) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Security token invalid or expired. Please re-enter master passkey.',
         requiresLogin: true,
       },
       { status: 401 }
@@ -75,11 +78,11 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanPin = pin.trim();
-    const correctPin = getAdminPin();
 
-    const isPinMatch = timingSafeCompare(cleanPin, correctPin);
+    // Verify dynamic OTP (with master recovery PIN fallback)
+    const otpVerification = verifyDynamicOtp(targetSessionId, cleanPin);
 
-    if (!isPinMatch) {
+    if (!otpVerification.valid) {
       const failRecord = recordFailedAttempt(ip);
       addAuditLog({
         event: 'PIN_FAILED',
@@ -96,7 +99,7 @@ export async function POST(req: NextRequest) {
           success: false,
           error: failRecord.locked
             ? 'Account locked for 15 minutes due to multiple failed attempts.'
-            : 'Access Denied: Invalid 6-Digit Security PIN.',
+            : (otpVerification.error || 'Access Denied: Invalid 6-Digit Security PIN.'),
           locked: failRecord.locked,
           remainingAttempts: failRecord.remainingAttempts,
           lockoutRemainingSeconds: failRecord.lockoutRemainingSeconds,
@@ -109,7 +112,7 @@ export async function POST(req: NextRequest) {
     resetRateLimit(ip);
 
     const fullSessionToken = signSessionToken({
-      sessionId: `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      sessionId: targetSessionId,
       role: 'superadmin',
       stage: 'authenticated',
       ip,
@@ -135,7 +138,7 @@ export async function POST(req: NextRequest) {
       status: 'SUCCESS',
       ip,
       userAgent,
-      details: 'Dual-factor verification successful. Full executive console session issued.',
+      details: 'Dual-factor verification successful. Single-use dynamic OTP consumed.',
     });
 
     return NextResponse.json({
@@ -151,4 +154,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

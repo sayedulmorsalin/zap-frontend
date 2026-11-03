@@ -17,6 +17,8 @@ import {
   UserCheck,
   Server,
   Zap,
+  Mail,
+  Send,
 } from 'lucide-react';
 import { AuditLogEntry } from '../../lib/adminSecurity';
 
@@ -43,6 +45,8 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
   const [currentPasskey, setCurrentPasskey] = useState('');
   const [newPasskey, setNewPasskey] = useState('');
   const [newPin, setNewPin] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [activeAdminEmail, setActiveAdminEmail] = useState('admin@zapbd.com');
   const [showCurrentPasskey, setShowCurrentPasskey] = useState(false);
   const [showNewPasskey, setShowNewPasskey] = useState(false);
   const [showNewPin, setShowNewPin] = useState(false);
@@ -70,9 +74,19 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${remainingSec.toString().padStart(2, '0')}`;
   };
 
-  const fetchLogs = useCallback(async () => {
+  const fetchStatusAndLogs = useCallback(async () => {
     setLoadingLogs(true);
     try {
+      // 1. Fetch current status / email
+      const statusRes = await fetch('/api/admin/auth/status');
+      if (statusRes.ok) {
+        const statusJson = await statusRes.json();
+        if (statusJson.adminEmail) {
+          setActiveAdminEmail(statusJson.adminEmail);
+        }
+      }
+
+      // 2. Fetch logs
       const res = await fetch('/api/admin/auth/audit');
       if (res.ok) {
         const json = await res.json();
@@ -88,8 +102,8 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
   }, []);
 
   useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
+    fetchStatusAndLogs();
+  }, [fetchStatusAndLogs]);
 
   const handleUpdateCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,8 +114,8 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
       return;
     }
 
-    if (!newPasskey && !newPin) {
-      setCredMessage({ type: 'error', text: 'Please enter a new Passkey or 6-digit PIN to update.' });
+    if (!newPasskey && !newPin && !newEmail) {
+      setCredMessage({ type: 'error', text: 'Please enter a new Passkey, Emergency PIN, or 2FA Email to update.' });
       return;
     }
 
@@ -111,7 +125,12 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
     }
 
     if (newPin && !/^\d{6}$/.test(newPin.trim())) {
-      setCredMessage({ type: 'error', text: 'Security PIN must be exactly 6 numeric digits (0-9).' });
+      setCredMessage({ type: 'error', text: 'Emergency PIN must be exactly 6 numeric digits (0-9).' });
+      return;
+    }
+
+    if (newEmail && (!newEmail.includes('@') || newEmail.trim().length < 5)) {
+      setCredMessage({ type: 'error', text: 'Please enter a valid recipient email address.' });
       return;
     }
 
@@ -124,6 +143,7 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
           currentPasskey,
           newPasskey: newPasskey.trim() || undefined,
           newPin: newPin.trim() || undefined,
+          newEmail: newEmail.trim() || undefined,
         }),
       });
 
@@ -133,7 +153,8 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
         setCurrentPasskey('');
         setNewPasskey('');
         setNewPin('');
-        fetchLogs();
+        setNewEmail('');
+        fetchStatusAndLogs();
       } else {
         setCredMessage({ type: 'error', text: json.error || 'Failed to update credentials.' });
       }
@@ -218,7 +239,7 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
                 High-Security Administration Shield
               </h2>
               <p style={{ fontSize: '0.82rem', color: '#A1A1AA', margin: '4px 0 0' }}>
-                Dual-layer passkey &amp; PIN authentication, constant-time cryptography, and brute-force mitigation active.
+                Unique email-delivered single-use 2FA PINs, constant-time cryptography, and brute-force mitigation active.
               </p>
             </div>
           </div>
@@ -286,10 +307,10 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
           </div>
 
           <div style={{ backgroundColor: '#18181B', padding: '12px 14px', borderRadius: '10px', border: '1px solid #27272A' }}>
-            <div style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600 }}>MULTI-FACTOR GATE</div>
+            <div style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600 }}>DYNAMIC 2FA VIA EMAIL</div>
             <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#4ADE80', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CheckCircle2 size={14} />
-              <span>Passkey + 6-Digit PIN</span>
+              <Mail size={14} />
+              <span>Unique Per Login</span>
             </div>
           </div>
 
@@ -323,10 +344,10 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
         }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A', margin: 0, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <KeyRound size={18} color="#D32F2F" />
-            <span>Update Security Passkeys</span>
+            <span>Update Security Credentials &amp; 2FA Email</span>
           </h3>
           <p style={{ fontSize: '0.78rem', color: '#64748B', margin: '0 0 16px' }}>
-            Change your Master Administrative Passkey or 6-digit Security PIN. Requires current passkey for authorization.
+            Change your Master Passkey, 2FA recipient email, or Emergency PIN. Requires current passkey for authorization.
           </p>
 
           {credMessage && (
@@ -351,7 +372,7 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
           <form onSubmit={handleUpdateCredentials} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                Current Passkey (Required)
+                Current Passkey (Required to Authorize Changes)
               </label>
               <div style={{ position: 'relative' }}>
                 <input
@@ -370,6 +391,21 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
                 >
                   {showCurrentPasskey ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                2FA Recipient Email (Currently: <strong>{activeAdminEmail}</strong>)
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="email"
+                  placeholder="Enter new 2FA recipient email..."
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="admin-input"
+                />
               </div>
             </div>
 
@@ -398,7 +434,7 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
 
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                New 6-Digit 2FA Security PIN (Leave blank to keep unchanged)
+                Emergency Master Recovery PIN (6 Digits, leave blank to keep unchanged)
               </label>
               <div style={{ position: 'relative' }}>
                 <input
@@ -437,7 +473,7 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
               }}
             >
               {updatingCreds ? <RefreshCw size={16} className="spin" /> : <Lock size={16} />}
-              <span>Save &amp; Apply Security Credentials</span>
+              <span>Save &amp; Apply Security Settings</span>
             </button>
           </form>
         </div>
@@ -501,11 +537,10 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', fontWeight: 700, color: '#0F172A', marginBottom: '4px' }}>
               <Server size={14} color="#64748B" />
-              <span>Environment Security Variables</span>
+              <span>Email Provider API Integrations</span>
             </div>
             <div style={{ fontSize: '0.72rem', color: '#64748B', lineHeight: '1.4' }}>
-              Production deployments can override secrets via server env variables:
-              <code> ADMIN_PANEL_SECRET</code>, <code>ADMIN_SECURITY_PIN</code>, and <code>ADMIN_SESSION_SECRET</code>.
+              Configurable via server env: <code>RESEND_API_KEY</code>, <code>BREVO_API_KEY</code>, <code>SENDGRID_API_KEY</code>, or <code>EMAIL_WEBHOOK_URL</code>. In development or without API keys, codes are safely printed in server console and audit trail.
             </div>
           </div>
         </div>
@@ -526,7 +561,7 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
               <span>Live Security &amp; Access Audit Trail</span>
             </h3>
             <p style={{ fontSize: '0.78rem', color: '#64748B', margin: '4px 0 0' }}>
-              Real-time server log of authentication attempts, rate limit blocks, and administrative actions.
+              Real-time server log of authentication attempts, dynamic OTP dispatches, rate limit blocks, and administrative actions.
             </p>
           </div>
 
@@ -555,7 +590,7 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
             </div>
 
             <button
-              onClick={fetchLogs}
+              onClick={fetchStatusAndLogs}
               disabled={loadingLogs}
               title="Refresh Audit Trail"
               style={{
@@ -664,4 +699,3 @@ export const SecurityManager: React.FC<SecurityManagerProps> = ({
     </div>
   );
 };
-
