@@ -47,6 +47,24 @@ export function normalizeImageUrl(url?: string | null): string {
   return trimmed;
 }
 
+/**
+ * Returns authenticated headers for administrative API operations.
+ * Resolves session passkey or auth token dynamically.
+ */
+export function getAdminHeaders(): Record<string, string> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
+  const adminPasskey = typeof window !== 'undefined'
+    ? (sessionStorage.getItem('zap_admin_pass') || 'zap@admin2026')
+    : 'zap@admin2026';
+  const authToken = token || adminPasskey;
+
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${authToken}`,
+    'x-admin-key': adminPasskey,
+  };
+}
+
 export interface ApiHealthResponse {
   status: string;
   timestamp: string;
@@ -534,7 +552,6 @@ export async function createApiOrder(orderData: Omit<Partial<Order>, 'items'> & 
     const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
     };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -1084,12 +1101,7 @@ export async function deleteApiFile(keyOrId: string): Promise<{ success: boolean
  */
 export async function fetchApiOrders(): Promise<Order[]> {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
-    };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAdminHeaders();
 
     const res = await fetch(`${API_BASE}/api/admin/orders`, {
       method: 'GET',
@@ -1210,12 +1222,7 @@ export async function updateApiOrderStatus(
   trackingNumber?: string
 ): Promise<{ success: boolean; data?: unknown; message?: string }> {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
-    };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAdminHeaders();
 
     const res = await fetch(`${API_BASE}/api/orders/${orderId}`, {
       method: 'PATCH',
@@ -1226,7 +1233,6 @@ export async function updateApiOrderStatus(
         trackingNumber,
       }),
     });
-
     const json = await res.json().catch(() => ({}));
     return {
       success: res.ok && json.success,
@@ -1244,12 +1250,7 @@ export async function updateApiOrderStatus(
  */
 export async function deleteApiOrder(orderId: string): Promise<{ success: boolean; message?: string }> {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
-    };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAdminHeaders();
 
     const res = await fetch(`${API_BASE}/api/orders/${orderId}`, {
       method: 'DELETE',
@@ -1393,12 +1394,7 @@ export async function trackApiOrder(query: string): Promise<{ success: boolean; 
  */
 export async function fetchApiCustomers(): Promise<Customer[]> {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
-    };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAdminHeaders();
 
     const res = await fetch(`${API_BASE}/api/admin/users`, {
       method: 'GET',
@@ -1477,12 +1473,7 @@ export async function saveAllApiBanners(
   promoBanners: PromoBanner[] = []
 ): Promise<boolean> {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
-    };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAdminHeaders();
 
     const res = await fetch(`${API_BASE}/api/banners`, {
       method: 'PUT',
@@ -1502,12 +1493,7 @@ export async function saveAllApiBanners(
  */
 export async function createOrUpdateApiBanner(banner: Partial<HeroSlide & PromoBanner>): Promise<boolean> {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
-    };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAdminHeaders();
 
     const res = await fetch(`${API_BASE}/api/banners`, {
       method: 'POST',
@@ -1527,12 +1513,7 @@ export async function createOrUpdateApiBanner(banner: Partial<HeroSlide & PromoB
  */
 export async function deleteApiBanner(bannerId: string): Promise<boolean> {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('zap_access_token') : null;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'x-admin-key': 'zap@admin2026',
-    };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers = getAdminHeaders();
 
     const res = await fetch(`${API_BASE}/api/banners/${bannerId}`, {
       method: 'DELETE',

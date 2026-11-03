@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { 
   Bell, 
   ExternalLink, 
-  Menu 
+  Menu,
+  ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import { AdminTab } from '../../types/admin';
 import { useShop } from '../../context/ShopContext';
@@ -14,12 +16,14 @@ interface AdminHeaderProps {
   currentTab: AdminTab;
   toggleSidebar: () => void;
   setCurrentTab: (tab: AdminTab) => void;
+  onManualLock?: () => void;
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({
   currentTab,
   toggleSidebar,
   setCurrentTab,
+  onManualLock,
 }) => {
   const { orders, apiStatus, apiInfo, refreshFromApi } = useShop();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -41,6 +45,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
     coupons: { title: 'Coupons & Campaign Promos', subtitle: 'Create discount codes, flash sales, and customer perks' },
     customers: { title: 'Shoppers & Privilege Club', subtitle: 'Customer directory, lifetime values, and VIP status' },
     settings: { title: 'Store Settings & Controls', subtitle: 'Hotlines, warehouse dispatch rules, and announcement tickers' },
+    security: { title: 'Executive Security Center', subtitle: 'Multi-layer passkey & PIN authentication, session timeouts, and live audit trail' },
   };
 
   const activeTabMeta = tabTitles[currentTab];
@@ -128,6 +133,50 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <span className="admin-header-store-btn-text">Store</span>
           <ExternalLink size={14} />
         </Link>
+
+        {/* Security Shield Indicator / Tab Shortcut */}
+        <button
+          onClick={() => setCurrentTab('security')}
+          title="Executive Security Center: 2FA & Cryptographic Shield Active"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 10px',
+            borderRadius: '8px',
+            backgroundColor: currentTab === 'security' ? '#DCFCE7' : '#F8FAFC',
+            border: currentTab === 'security' ? '1px solid #86EFAC' : '1px solid #E2E8F0',
+            color: '#166534',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+          }}
+        >
+          <ShieldCheck size={14} color="#16A34A" />
+          <span className="admin-header-db-text">2FA SHIELD</span>
+        </button>
+
+        {/* Quick Lock Console Button */}
+        {onManualLock && (
+          <button
+            onClick={onManualLock}
+            title="Lock Console (Require PIN to Resume)"
+            aria-label="Lock Console"
+            className="admin-header-icon-btn"
+            style={{
+              borderRadius: '8px',
+              border: '1px solid #E2E8F0',
+              backgroundColor: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: '#475569',
+            }}
+          >
+            <Lock size={16} />
+          </button>
+        )}
 
         {/* Notifications Dropdown */}
         <div style={{ position: 'relative' }}>

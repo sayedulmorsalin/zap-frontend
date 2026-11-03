@@ -102,9 +102,10 @@ export type AdminTab =
   | 'dashboard'
   | 'products'
   | 'orders'
+  | 'banners'
   | 'brands'
   | 'coupons'
   | 'customers'
-  | 'banners'
-  | 'settings';
+  | 'settings'
+  | 'security';
 

@@ -12,8 +12,10 @@ import {
   Settings, 
   ExternalLink,
   Shield,
+  ShieldCheck,
   ChevronRight,
   LogOut,
+  Lock,
   Image as ImageIcon,
   X
 } from 'lucide-react';
@@ -26,6 +28,7 @@ interface AdminSidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   onLogout?: () => void;
+  onManualLock?: () => void;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -34,6 +37,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   isOpen,
   setIsOpen,
   onLogout,
+  onManualLock,
 }) => {
   const { orders, products, coupons, heroSlides } = useShop();
 
@@ -52,6 +56,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     { id: 'coupons' as AdminTab, label: 'Coupons & Promos', icon: Tag, badge: coupons.filter(c => c.isActive).length },
     { id: 'customers' as AdminTab, label: 'Shoppers & VIPs', icon: Users },
     { id: 'settings' as AdminTab, label: 'Store Controls', icon: Settings },
+    { id: 'security' as AdminTab, label: 'Security & 2FA', icon: ShieldCheck },
   ];
 
 
@@ -199,28 +204,53 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           </div>
         </div>
 
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            title="Lock Console / Sign Out"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#94A3B8',
-              cursor: 'pointer',
-              padding: '6px',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'color 0.15s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#EF4444')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#94A3B8')}
-          >
-            <LogOut size={16} />
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {onManualLock && (
+            <button
+              onClick={onManualLock}
+              title="Lock Console (Require PIN to Resume)"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#94A3B8',
+                cursor: 'pointer',
+                padding: '6px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'color 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#94A3B8')}
+            >
+              <Lock size={15} />
+            </button>
+          )}
+
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              title="Lock Console / Sign Out"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#94A3B8',
+                cursor: 'pointer',
+                padding: '6px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'color 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#EF4444')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#94A3B8')}
+            >
+              <LogOut size={16} />
+            </button>
+          )}
+        </div>
       </div>
     </aside>
   );
