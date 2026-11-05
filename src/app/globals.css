@@ -404,6 +404,13 @@ body {
   /* Product Card Compact Styling & Small Text */
   .product-card {
     border-radius: 12px !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  .product-card a {
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
   }
 
   .product-card-body {

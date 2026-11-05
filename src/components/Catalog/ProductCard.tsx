@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Heart, Eye, ShoppingBag, Star } from 'lucide-react';
 import { Product } from '../../types/product';
@@ -56,15 +57,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   }
   const isOutOfStock = currentStock <= 0 || product.inStock === false;
 
+  const productUrl = `/products/${encodeURIComponent(product.slug || String(product.id))}`;
+
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    }
+  }, []);
+
   const handleCardClick = (e: React.MouseEvent) => {
-    // Navigate to product page if didn't click button
+    // Navigate to product page if didn't click interactive button or link
     const target = e.target as HTMLElement;
-    if (!target.closest('button')) {
-      router.push(`/products/${product.slug || product.id}`);
+    if (!target.closest('button') && !target.closest('a')) {
+      router.push(productUrl);
     }
   };
 
   const handleBuyNow = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     if (isOutOfStock) return;
     addToCart(product, selectedSize, selectedColor, 1);
@@ -75,8 +86,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   return (
     <div
       onClick={handleCardClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => {
+        if (!isTouchDevice) setIsHovered(true);
+      }}
+      onMouseLeave={() => {
+        if (!isTouchDevice) setIsHovered(false);
+      }}
       className="product-card"
       style={{
         backgroundColor: '#FFFFFF',
@@ -90,6 +105,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         boxShadow: isHovered ? '0 16px 32px -4px rgba(0, 0, 0, 0.1)' : '0 2px 6px rgba(0, 0, 0, 0.04)',
         transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
         cursor: 'pointer',
+        WebkitTapHighlightColor: 'transparent',
+        touchAction: 'manipulation',
       }}
     >
       {/* Badges Container */}
@@ -112,7 +129,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
       {/* Wishlist Button (Top Right) */}
       <button
+        type="button"
         onClick={(e) => {
+          e.preventDefault();
           e.stopPropagation();
           toggleWishlist(product.id);
         }}
@@ -156,25 +175,40 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-        <Image
-          src={currentImg}
-          alt={stripHtml(product.name)}
-          width={400}
-          height={400}
-          unoptimized
-          onError={() => {
-            if (!imgError) {
-              setImgError(true);
-            }
-          }}
+        <Link
+          href={productUrl}
+          aria-label={`View ${stripHtml(product.name)}`}
           style={{
-            width: '90%',
-            height: '90%',
-            objectFit: 'contain',
-            transition: 'transform 0.4s ease, opacity 0.3s ease',
-            transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textDecoration: 'none',
+            WebkitTapHighlightColor: 'transparent',
+            cursor: 'pointer',
           }}
-        />
+        >
+          <Image
+            src={currentImg}
+            alt={stripHtml(product.name)}
+            width={400}
+            height={400}
+            unoptimized
+            onError={() => {
+              if (!imgError) {
+                setImgError(true);
+              }
+            }}
+            style={{
+              width: '90%',
+              height: '90%',
+              objectFit: 'contain',
+              transition: 'transform 0.4s ease, opacity 0.3s ease',
+              transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+            }}
+          />
+        </Link>
 
         {/* Hover Quick Actions Overlay */}
         <div style={{
@@ -185,14 +219,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           display: 'flex',
           gap: '8px',
           opacity: isHovered ? 1 : 0,
+          pointerEvents: isHovered ? 'auto' : 'none',
           transform: isHovered ? 'translateY(0)' : 'translateY(10px)',
           transition: 'all 0.25s ease',
           zIndex: 4,
         }}>
-          <button
+          <Link
+            href={productUrl}
             onClick={(e) => {
               e.stopPropagation();
-              router.push(`/products/${product.slug || product.id}`);
             }}
             className="btn btn-secondary btn-sm"
             style={{
@@ -202,11 +237,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
               fontSize: '0.8rem',
               fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              textDecoration: 'none',
+              color: '#0F172A',
             }}
           >
             <Eye size={14} color="#0F172A" />
-            <span>View Details</span>
-          </button>
+            <span>View Product</span>
+          </Link>
         </div>
       </div>
 
@@ -255,7 +296,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
         }}>
-          <FormattedText text={product.name} />
+          <Link
+            href={productUrl}
+            style={{
+              textDecoration: 'none',
+              color: 'inherit',
+              display: 'inline',
+              WebkitTapHighlightColor: 'transparent',
+              cursor: 'pointer',
+            }}
+          >
+            <FormattedText text={product.name} />
+          </Link>
         </h3>
 
         {/* Rating Stars */}
@@ -312,8 +364,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               const isSzOut = szStock <= 0;
               return (
                 <button
+                  type="button"
                   key={sz}
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     setSelectedSize(sz);
                   }}
@@ -351,8 +405,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
               {(product.colors || []).map((c) => (
                 <button
+                  type="button"
                   key={c.name}
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     setSelectedColor(c.name);
                     const cw = product.colorVariants?.find((item) => item.color.toLowerCase() === c.name.toLowerCase());
@@ -456,6 +512,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <button
             type="button"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               if (isOutOfStock) return;
               addToCart(product, selectedSize, selectedColor, 1);

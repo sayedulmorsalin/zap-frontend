@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   X, 
@@ -224,18 +225,24 @@ export const CartDrawer: React.FC = () => {
                 }}
               >
                 {/* Thumbnail */}
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '10px',
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
-                  overflow: 'hidden',
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
+                <Link
+                  href={`/products/${encodeURIComponent(item.product.slug || String(item.product.id))}`}
+                  onClick={() => setIsCartOpen(false)}
+                  style={{
+                    width: '80px',
+                    height: '80px',
+                    borderRadius: '10px',
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
                   <Image
                     src={itemImage}
                     alt={`${stripHtml(item.product.name)} - ${item.selectedColor}`}
@@ -244,7 +251,7 @@ export const CartDrawer: React.FC = () => {
                     unoptimized
                     style={{ width: '90%', height: '90%', objectFit: 'contain' }}
                   />
-                </div>
+                </Link>
 
                 {/* Details */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -264,7 +271,18 @@ export const CartDrawer: React.FC = () => {
                         lineHeight: 1.3,
                         marginBottom: '4px',
                       }}>
-                        <FormattedText text={item.product.name} />
+                        <Link
+                          href={`/products/${encodeURIComponent(item.product.slug || String(item.product.id))}`}
+                          onClick={() => setIsCartOpen(false)}
+                          style={{
+                            textDecoration: 'none',
+                            color: 'inherit',
+                            WebkitTapHighlightColor: 'transparent',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <FormattedText text={item.product.name} />
+                        </Link>
                       </h4>
                     </div>
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   X, 
@@ -933,10 +934,10 @@ export const QuickViewModal: React.FC = () => {
             </div>
 
             {/* Direct Link to Full Product Page */}
-            <button
+            <Link
+              href={`/products/${encodeURIComponent(product.slug || String(product.id))}`}
               onClick={() => {
                 setQuickViewProduct(null);
-                router.push(`/products/${product.slug || product.id}`);
               }}
               style={{
                 width: '100%',
@@ -953,6 +954,8 @@ export const QuickViewModal: React.FC = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
+                textDecoration: 'none',
+                WebkitTapHighlightColor: 'transparent',
                 transition: 'background 0.15s ease',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#27272A')}
@@ -960,7 +963,7 @@ export const QuickViewModal: React.FC = () => {
             >
               <span>View Full Product Page</span>
               <ExternalLink size={15} />
-            </button>
+            </Link>
 
             {/* Trust Badges */}
             <div style={{

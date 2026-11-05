@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search, X, ArrowRight, Sparkles, TrendingUp } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
@@ -416,9 +417,10 @@ export const SearchModal: React.FC = () => {
               {matchingProducts.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {matchingProducts.map((p) => (
-                    <div
+                    <Link
                       key={p.id}
-                      onClick={() => handleProductSelect(p.slug || p.id)}
+                      href={`/products/${encodeURIComponent(p.slug || String(p.id))}`}
+                      onClick={() => setIsSearchOpen(false)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -428,6 +430,9 @@ export const SearchModal: React.FC = () => {
                         border: '1px solid #F1F5F9',
                         backgroundColor: '#FFFFFF',
                         cursor: 'pointer',
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        WebkitTapHighlightColor: 'transparent',
                         transition: 'all 0.15s ease',
                       }}
                       onMouseEnter={(e) => {
@@ -492,7 +497,7 @@ export const SearchModal: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   ))}
 
                   {/* View All Button */}

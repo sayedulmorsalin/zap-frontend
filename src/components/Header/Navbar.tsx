@@ -409,10 +409,10 @@ export const Navbar: React.FC = () => {
                 Instant Footwear Results
               </div>
               {searchResults.map((product) => (
-                <div
+                <Link
                   key={product.id}
+                  href={`/products/${encodeURIComponent(product.slug || String(product.id))}`}
                   onClick={() => {
-                    router.push(`/products/${product.slug || product.id}`);
                     setIsSearchActive(false);
                   }}
                   style={{
@@ -421,6 +421,9 @@ export const Navbar: React.FC = () => {
                     gap: '12px',
                     padding: '8px 14px',
                     cursor: 'pointer',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    WebkitTapHighlightColor: 'transparent',
                     transition: 'background 0.15s ease',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
@@ -460,7 +463,7 @@ export const Navbar: React.FC = () => {
                       Tk {product.price.toLocaleString()}
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
               <div style={{
                 padding: '8px 14px',
@@ -708,11 +711,11 @@ export const Navbar: React.FC = () => {
                 overflow: 'hidden',
               }}>
                 {searchResults.map((product) => (
-                  <div
+                  <Link
                     key={product.id}
+                    href={`/products/${encodeURIComponent(product.slug || String(product.id))}`}
                     onClick={() => {
                       setIsMobileMenuOpen(false);
-                      router.push(`/products/${product.slug || product.id}`);
                     }}
                     style={{
                       display: 'flex',
@@ -721,6 +724,9 @@ export const Navbar: React.FC = () => {
                       padding: '8px 10px',
                       borderBottom: '1px solid #F1F5F9',
                       cursor: 'pointer',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      WebkitTapHighlightColor: 'transparent',
                     }}
                   >
                     <Image
@@ -754,7 +760,7 @@ export const Navbar: React.FC = () => {
                     <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0F172A' }}>
                       Tk {product.price.toLocaleString()}
                     </div>
-                  </div>
+                  </Link>
                 ))}
 
                 <button

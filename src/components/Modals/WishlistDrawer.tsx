@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { X, Heart, Trash2, ShoppingBag } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { FormattedText, stripHtml } from '../Common/FormattedText';
@@ -129,9 +130,9 @@ export const WishlistDrawer: React.FC = () => {
                   borderBottom: '1px solid #F1F5F9',
                 }}
               >
-                <div
+                <Link
+                  href={`/products/${encodeURIComponent(product.slug || String(product.id))}`}
                   onClick={() => {
-                    setQuickViewProduct(product);
                     setIsWishlistOpen(false);
                   }}
                   style={{
@@ -146,6 +147,7 @@ export const WishlistDrawer: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    WebkitTapHighlightColor: 'transparent',
                   }}
                 >
                   <Image
@@ -156,7 +158,7 @@ export const WishlistDrawer: React.FC = () => {
                     unoptimized
                     style={{ width: '90%', height: '90%', objectFit: 'contain' }}
                   />
-                </div>
+                </Link>
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -165,20 +167,28 @@ export const WishlistDrawer: React.FC = () => {
                         {product.brand}
                       </span>
                       <h4
-                        onClick={() => {
-                          setQuickViewProduct(product);
-                          setIsWishlistOpen(false);
-                        }}
                         style={{
                           fontSize: '0.875rem',
                           fontWeight: 700,
                           color: '#0F172A',
                           lineHeight: 1.3,
-                          cursor: 'pointer',
                           marginBottom: '4px',
                         }}
                       >
-                        <FormattedText text={product.name} />
+                        <Link
+                          href={`/products/${encodeURIComponent(product.slug || String(product.id))}`}
+                          onClick={() => {
+                            setIsWishlistOpen(false);
+                          }}
+                          style={{
+                            textDecoration: 'none',
+                            color: 'inherit',
+                            WebkitTapHighlightColor: 'transparent',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <FormattedText text={product.name} />
+                        </Link>
                       </h4>
                     </div>
 
