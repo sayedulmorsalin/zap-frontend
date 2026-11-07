@@ -12,9 +12,10 @@ import { normalizeImageUrl } from '../../services/api';
 
 interface ProductCardProps {
   product: Product;
+  priority?: boolean;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, priority = false }) => {
   const router = useRouter();
   const { addToCart, toggleWishlist, isWishlisted, setQuickViewProduct, setIsCartOpen } = useShop();
   const [selectedSize, setSelectedSize] = useState<string>((product.sizes && product.sizes[0]) || '41');
@@ -194,7 +195,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             alt={stripHtml(product.name)}
             width={400}
             height={400}
-            unoptimized
+            priority={priority}
+            loading={priority ? 'eager' : 'lazy'}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px"
             onError={() => {
               if (!imgError) {
                 setImgError(true);
@@ -456,7 +459,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               Tk {product.price.toLocaleString()}
             </div>
             {product.regularPrice > product.price && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                 <span className="product-card-regular-price" style={{
                   fontSize: '0.8rem',
                   color: '#94A3B8',
@@ -468,6 +471,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   fontSize: '0.72rem',
                   fontWeight: 700,
                   color: '#15803D',
+                  whiteSpace: 'nowrap',
                 }} suppressHydrationWarning>
                   Save Tk {(product.regularPrice - product.price).toLocaleString()}
                 </span>

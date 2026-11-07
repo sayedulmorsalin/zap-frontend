@@ -90,6 +90,23 @@ export const WhatsAppFloatingButton: React.FC = () => {
       >
         Chat on WhatsApp
       </span>
+
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .floating-whatsapp-btn {
+            bottom: 72px !important;
+            right: 16px !important;
+            height: 48px !important;
+            min-width: 48px !important;
+            border-radius: 24px !important;
+            padding: 0 !important;
+            justify-content: center !important;
+          }
+          .floating-whatsapp-btn span {
+            display: none !important;
+          }
+        }
+      `}</style>
     </a>
   );
 };

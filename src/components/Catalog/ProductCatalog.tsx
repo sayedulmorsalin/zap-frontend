@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   RotateCcw, 
   ArrowUpDown, 
@@ -157,12 +157,24 @@ export const ProductCatalog: React.FC = () => {
     priceFilter !== 'all' ||
     searchQuery.trim() !== '';
 
+  const activeFilterCount = 
+    (selectedCategory !== 'all' ? 1 : 0) + 
+    (selectedBrand !== 'all' ? 1 : 0) + 
+    (selectedGender !== 'ALL' ? 1 : 0) + 
+    (selectedSize !== 'all' ? 1 : 0) + 
+    (priceFilter !== 'all' ? 1 : 0);
+
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
   return (
     <section id="product-catalog" style={{
       padding: '50px 0 70px',
       backgroundColor: '#F8FAFC',
+      width: '100%',
+      maxWidth: '100%',
+      overflow: 'hidden',
     }}>
-      <div className="container">
+      <div className="container" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         {/* Section Header */}
         <div style={{
           display: 'flex',
@@ -198,10 +210,13 @@ export const ProductCatalog: React.FC = () => {
           className="catalog-category-pills"
           style={{
             display: 'flex',
-            gap: '10px',
+            gap: '8px',
             flexWrap: 'wrap',
             paddingBottom: '16px',
             marginBottom: '24px',
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
           }}
         >
           {categories.map((cat) => (
@@ -232,11 +247,12 @@ export const ProductCatalog: React.FC = () => {
           backgroundColor: '#FFFFFF',
           borderRadius: '16px',
           border: '1px solid #E2E8F0',
-          padding: '18px 20px',
-          marginBottom: '28px',
+          padding: '16px 20px',
+          marginBottom: '24px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
         }}>
-          <div style={{
+          {/* Desktop Filter Bar (>= 900px) */}
+          <div className="desktop-filter-bar" style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -359,6 +375,107 @@ export const ProductCatalog: React.FC = () => {
             </div>
           </div>
 
+          {/* Mobile Filter Bar (< 900px) */}
+          <div className="mobile-filter-bar" style={{
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            width: '100%',
+          }}>
+            <button
+              type="button"
+              onClick={() => setIsMobileFilterOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 16px',
+                borderRadius: '10px',
+                border: '1.5px solid #0F172A',
+                backgroundColor: '#0F172A',
+                color: '#FFFFFF',
+                fontSize: '0.84rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+            >
+              <SlidersHorizontal size={15} />
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span style={{
+                  backgroundColor: '#D32F2F',
+                  color: '#FFFFFF',
+                  borderRadius: '999px',
+                  padding: '1px 7px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                }}>
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: '10px',
+              padding: '6px 10px',
+              flex: 1,
+              maxWidth: '180px',
+            }}>
+              <ArrowUpDown size={13} color="#64748B" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: '#0F172A',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="featured">Featured</option>
+                <option value="price-asc">Price: Low-High</option>
+                <option value="price-desc">Price: High-Low</option>
+                <option value="rating">Top Rated</option>
+                <option value="newest">Newest</option>
+              </select>
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '9px 10px',
+                  borderRadius: '10px',
+                  border: '1px solid #FECACA',
+                  backgroundColor: '#FEF2F2',
+                  color: '#DC2626',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                <RotateCcw size={12} />
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
+
           {/* Active Filter Tags */}
           {hasActiveFilters && (
             <div style={{
@@ -423,11 +540,265 @@ export const ProductCatalog: React.FC = () => {
           )}
         </div>
 
+        {/* Mobile Filter Bottom Sheet Modal */}
+        {isMobileFilterOpen && (
+          <div
+            className="modal-backdrop"
+            onClick={() => setIsMobileFilterOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              zIndex: 10000,
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: '#FFFFFF',
+                width: '100%',
+                maxWidth: '520px',
+                maxHeight: '85vh',
+                borderTopLeftRadius: '22px',
+                borderTopRightRadius: '22px',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                boxShadow: '0 -10px 30px rgba(0,0,0,0.25)',
+              }}
+            >
+              {/* Modal Header */}
+              <div style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <SlidersHorizontal size={18} color="#D32F2F" />
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                    Filter Footwear {activeFilterCount > 0 && `(${activeFilterCount})`}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileFilterOpen(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: '#64748B' }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Scrollable Filter Body */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px' }}>
+                {/* Gender Filter */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                    DEPARTMENT / GENDER
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                    {['ALL', 'MEN', 'WOMEN', 'KIDS'].map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setSelectedGender(g)}
+                        style={{
+                          padding: '9px 4px',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          border: selectedGender === g ? '1.5px solid #D32F2F' : '1px solid #E2E8F0',
+                          backgroundColor: selectedGender === g ? '#FFEBEE' : '#F8FAFC',
+                          color: selectedGender === g ? '#D32F2F' : '#334155',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                        }}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Brand Filter */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                    BRANDS
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedBrand('all')}
+                      style={{
+                        padding: '7px 14px',
+                        borderRadius: '999px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        border: selectedBrand === 'all' ? '1.5px solid #D32F2F' : '1px solid #E2E8F0',
+                        backgroundColor: selectedBrand === 'all' ? '#FFEBEE' : '#FFFFFF',
+                        color: selectedBrand === 'all' ? '#D32F2F' : '#334155',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      All Brands
+                    </button>
+                    {brands.map((b) => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => setSelectedBrand(b.slug)}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: '999px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          border: selectedBrand === b.slug ? '1.5px solid #D32F2F' : '1px solid #E2E8F0',
+                          backgroundColor: selectedBrand === b.slug ? '#FFEBEE' : '#FFFFFF',
+                          color: selectedBrand === b.slug ? '#D32F2F' : '#334155',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {b.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Size Filter */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                    SIZE (EU)
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSize('all')}
+                      style={{
+                        padding: '8px 2px',
+                        borderRadius: '8px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        border: selectedSize === 'all' ? '1.5px solid #D32F2F' : '1px solid #E2E8F0',
+                        backgroundColor: selectedSize === 'all' ? '#FFEBEE' : '#F8FAFC',
+                        color: selectedSize === 'all' ? '#D32F2F' : '#334155',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      All
+                    </button>
+                    {sizes.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setSelectedSize(s)}
+                        style={{
+                          padding: '8px 2px',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          border: selectedSize === s ? '1.5px solid #D32F2F' : '1px solid #E2E8F0',
+                          backgroundColor: selectedSize === s ? '#FFEBEE' : '#F8FAFC',
+                          color: selectedSize === s ? '#D32F2F' : '#334155',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Price Range Filter */}
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                    PRICE RANGE
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {priceOptions.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setPriceFilter(opt.id)}
+                        style={{
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          fontSize: '0.84rem',
+                          fontWeight: 600,
+                          border: priceFilter === opt.id ? '1.5px solid #D32F2F' : '1px solid #E2E8F0',
+                          backgroundColor: priceFilter === opt.id ? '#FFEBEE' : '#FFFFFF',
+                          color: priceFilter === opt.id ? '#D32F2F' : '#1E293B',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <span>{opt.label}</span>
+                        {priceFilter === opt.id && <span style={{ color: '#D32F2F', fontWeight: 800 }}>✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sticky Bottom Bar in Drawer */}
+              <div style={{
+                padding: '14px 20px',
+                borderTop: '1px solid #E2E8F0',
+                backgroundColor: '#FFFFFF',
+                display: 'flex',
+                gap: '12px',
+              }}>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      border: '1px solid #CBD5E1',
+                      backgroundColor: '#F8FAFC',
+                      color: '#475569',
+                      fontSize: '0.88rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Reset
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsMobileFilterOpen(false)}
+                  className="btn btn-primary"
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    fontSize: '0.92rem',
+                    fontWeight: 800,
+                    borderRadius: '8px',
+                    justifyContent: 'center',
+                  }}
+                >
+                  Show {filteredProducts.length} Footwear
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Product Grid */}
         {filteredProducts.length > 0 ? (
           <div className="product-catalog-grid">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {filteredProducts.map((product, idx) => (
+              <ProductCard key={product.id} product={product} priority={idx < 4} />
             ))}
           </div>
         ) : (
@@ -461,6 +832,33 @@ export const ProductCatalog: React.FC = () => {
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        @media (max-width: 900px) {
+          .desktop-filter-bar {
+            display: none !important;
+          }
+          .mobile-filter-bar {
+            display: flex !important;
+          }
+          .catalog-category-pills {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            scroll-snap-type: x mandatory !important;
+            -webkit-overflow-scrolling: touch !important;
+            scrollbar-width: none !important;
+            padding-bottom: 8px !important;
+            margin-bottom: 16px !important;
+          }
+          .catalog-category-pills::-webkit-scrollbar {
+            display: none !important;
+          }
+        }
+      `}</style>
     </section>
   );
 };

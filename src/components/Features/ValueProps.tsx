@@ -35,12 +35,17 @@ export const ValueProps: React.FC = () => {
       backgroundColor: '#F8FAFC',
       padding: '32px 0',
       borderBottom: '1px solid #E2E8F0',
+      width: '100%',
+      maxWidth: '100%',
+      overflow: 'hidden',
     }}>
-      <div className="container">
+      <div className="container" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         <div className="value-props-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
           gap: '20px',
+          width: '100%',
+          maxWidth: '100%',
         }}>
           {perks.map((p, idx) => (
             <div
@@ -99,6 +104,15 @@ export const ValueProps: React.FC = () => {
           ))}
         </div>
       </div>
+
+      <style jsx>{`
+        @media (max-width: 560px) {
+          .value-props-grid {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+        }
+      `}</style>
     </section>
   );
 };

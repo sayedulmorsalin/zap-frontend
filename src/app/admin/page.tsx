@@ -62,7 +62,7 @@ export default function AdminPage() {
   const [isConsoleLocked, setIsConsoleLocked] = useState(false);
   const [inactivityTimeoutMinutes, setInactivityTimeoutMinutes] = useState(15);
   const [sessionRemainingSeconds, setSessionRemainingSeconds] = useState(28800);
-  const lastActivityRef = useRef<number>(Date.now());
+  const lastActivityRef = useRef<number>(0);
 
   const { toastMessage, showToast } = useShop();
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { useShop } from '../../context/ShopContext';
 
@@ -15,6 +15,7 @@ interface StoryItem {
 
 export const StoryCategories: React.FC = () => {
   const { setSelectedCategory, setSelectedBrand, setSelectedGender } = useShop();
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
 
   const stories: StoryItem[] = [
     {
@@ -91,25 +92,30 @@ export const StoryCategories: React.FC = () => {
   return (
     <section style={{
       backgroundColor: '#FFFFFF',
-      padding: '24px 0 16px',
+      padding: '16px 0 12px',
       borderBottom: '1px solid #E2E8F0',
+      width: '100%',
+      maxWidth: '100%',
+      overflow: 'hidden',
     }}>
-      <div className="container">
+      <div className="container" style={{ padding: '0 8px', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
         <div 
           className="story-categories-track"
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: '20px',
-            flexWrap: 'wrap',
-            paddingBottom: '8px',
+            gap: '16px',
+            paddingBottom: '4px',
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
           }}
         >
           {stories.map((story) => (
             <button
               key={story.id}
               onClick={() => handleStoryClick(story)}
+              className="story-btn"
               style={{
                 background: 'none',
                 border: 'none',
@@ -117,20 +123,21 @@ export const StoryCategories: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '6px',
                 textAlign: 'center',
-                width: '84px',
+                flexShrink: 0,
+                padding: '4px 2px',
               }}
             >
               <div 
                 className="story-ring"
                 style={{
-                  width: '68px',
-                  height: '68px',
+                  width: '64px',
+                  height: '64px',
                   borderRadius: '50%',
-                  padding: '3px',
-                  background: 'linear-gradient(135deg, #D32F2F, #F59E0B)',
-                  boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                  padding: '2.5px',
+                  background: 'linear-gradient(135deg, #D32F2F 0%, #F59E0B 100%)',
+                  boxShadow: '0 3px 8px rgba(0,0,0,0.1)',
                   transition: 'transform 0.2s ease',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
@@ -145,11 +152,18 @@ export const StoryCategories: React.FC = () => {
                   border: '2px solid #FFFFFF',
                 }}>
                   <Image
-                    src={story.image}
+                    src={
+                      imgErrors[story.id]
+                        ? (story.category === 'formal' ? '/images/shoe-leather-formal.jpg' : '/images/shoe-power-runner.jpg')
+                        : story.image
+                    }
                     alt={story.title}
                     width={80}
                     height={80}
-                    unoptimized
+                    sizes="80px"
+                    onError={() => {
+                      setImgErrors((prev: Record<string, boolean>) => ({ ...prev, [story.id]: true }));
+                    }}
                     style={{
                       width: '100%',
                       height: '100%',
@@ -161,10 +175,11 @@ export const StoryCategories: React.FC = () => {
               <span 
                 className="story-title"
                 style={{
-                  fontSize: '0.75rem',
+                  fontSize: '0.72rem',
                   fontWeight: 700,
                   color: '#1E293B',
                   whiteSpace: 'nowrap',
+                  letterSpacing: '0.01em',
                 }}
               >
                 {story.title}
@@ -173,6 +188,42 @@ export const StoryCategories: React.FC = () => {
           ))}
         </div>
       </div>
+
+      <style jsx>{`
+        .story-categories-track {
+          justify-content: center;
+          flex-wrap: wrap;
+          width: 100%;
+          max-width: 100%;
+        }
+        @media (max-width: 900px) {
+          .story-categories-track {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            justify-content: flex-start !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            scroll-snap-type: x mandatory !important;
+            -webkit-overflow-scrolling: touch !important;
+            scrollbar-width: none !important;
+            padding: 4px 10px !important;
+            gap: 12px !important;
+          }
+          .story-categories-track::-webkit-scrollbar {
+            display: none !important;
+          }
+          .story-btn {
+            scroll-snap-align: start !important;
+            width: 64px !important;
+          }
+          .story-ring {
+            width: 56px !important;
+            height: 56px !important;
+          }
+        }
+      `}</style>
     </section>
   );
 };

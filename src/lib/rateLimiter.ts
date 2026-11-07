@@ -95,6 +95,43 @@ export function applyRateLimit(req: NextRequest): RateLimitResult {
   const pathname = req.nextUrl.pathname;
   const tier = getTierForPath(pathname);
 
+  // In development mode, allow localhost and private LAN IP requests so testing and hot reload never triggers 429
+  const isDevExempt =
+    ip === '127.0.0.1' ||
+    ip === '::1' ||
+    ip === 'localhost' ||
+    ip.startsWith('192.168.') ||
+    ip.startsWith('10.') ||
+    ip.startsWith('172.16.') ||
+    ip.startsWith('172.17.') ||
+    ip.startsWith('172.18.') ||
+    ip.startsWith('172.19.') ||
+    ip.startsWith('172.20.') ||
+    ip.startsWith('172.21.') ||
+    ip.startsWith('172.22.') ||
+    ip.startsWith('172.23.') ||
+    ip.startsWith('172.24.') ||
+    ip.startsWith('172.25.') ||
+    ip.startsWith('172.26.') ||
+    ip.startsWith('172.27.') ||
+    ip.startsWith('172.28.') ||
+    ip.startsWith('172.29.') ||
+    ip.startsWith('172.30.') ||
+    ip.startsWith('172.31.') ||
+    ip.startsWith('::ffff:192.168.') ||
+    ip.startsWith('::ffff:10.') ||
+    ip.startsWith('::ffff:127.0.0.1');
+
+  if (process.env.NODE_ENV !== 'production' && isDevExempt) {
+    return {
+      allowed: true,
+      limit: 10000,
+      remaining: 9999,
+      reset: Math.floor((Date.now() + tier.windowMs) / 1000),
+      tierName: `${tier.name}-dev`,
+    };
+  }
+
   // Check optional whitelist from environment
   const whitelistEnv = process.env.RATE_LIMIT_WHITELIST_IPS;
   if (whitelistEnv) {

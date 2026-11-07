@@ -489,7 +489,7 @@ export const OrderManager: React.FC = () => {
                           alt={it.product.name}
                           width={40}
                           height={40}
-                          unoptimized
+                          sizes="40px"
                           style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                         />
                       </div>

@@ -24,7 +24,7 @@ export function sanitizeHtml(input?: string | null): string {
   if (!input) return '';
 
   // Disallow scripts, iframes, objects, forms, and event handlers
-  let cleaned = input
+  const cleaned = input
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
     .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')

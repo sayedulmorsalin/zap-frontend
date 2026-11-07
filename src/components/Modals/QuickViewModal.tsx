@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { FormattedText, stripHtml } from '../Common/FormattedText';
+import { normalizeImageUrl } from '../../services/api';
 
 export const QuickViewModal: React.FC = () => {
   const router = useRouter();
@@ -70,9 +71,10 @@ export const QuickViewModal: React.FC = () => {
   );
 
   // Images for this colorway or fallback to general product images
-  const activeImages = (selectedColorway && selectedColorway.images && selectedColorway.images.length > 0)
+  const rawActiveImages = (selectedColorway && selectedColorway.images && selectedColorway.images.length > 0)
     ? selectedColorway.images
     : (product.images || []);
+  const activeImages = rawActiveImages.map((u) => normalizeImageUrl(u) || '/images/shoe-leather-formal.jpg');
 
   // Build size -> stock map for selected color
   const sizeStockMap: { [size: string]: number } = {};
@@ -307,7 +309,7 @@ export const QuickViewModal: React.FC = () => {
                 alt={`${stripHtml(product.name)} - ${currentColor}`}
                 width={500}
                 height={500}
-                unoptimized
+                sizes="(max-width: 768px) 90vw, 500px"
                 draggable={false}
                 style={{
                   width: '92%',
@@ -515,7 +517,7 @@ export const QuickViewModal: React.FC = () => {
                       alt={`View ${idx + 1}`}
                       width={64}
                       height={64}
-                      unoptimized
+                      sizes="64px"
                       style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }}
                     />
                   </button>

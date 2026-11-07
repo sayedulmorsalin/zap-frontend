@@ -22,7 +22,7 @@ export default function Home() {
   const { toastMessage } = useShop();
 
   return (
-    <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
       {/* 1. Header Structure */}
       <AnnouncementBar />
       <Navbar />

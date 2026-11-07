@@ -989,7 +989,7 @@ export default function CheckoutPage() {
                                   src={itemImage}
                                   alt={`${item.product.name} - ${item.selectedColor}`}
                                   fill
-                                  unoptimized
+                                  sizes="56px"
                                   style={{ objectFit: 'contain', padding: '4px' }}
                                 />
                               );

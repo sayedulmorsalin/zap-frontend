@@ -7,6 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Search, X, ArrowRight, Sparkles, TrendingUp } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { FormattedText, stripHtml } from '../Common/FormattedText';
+import { normalizeImageUrl } from '../../services/api';
 
 const POPULAR_SEARCHES = [
   'Formal Leather',
@@ -324,10 +325,13 @@ export const SearchModal: React.FC = () => {
                   >
                     <div style={{ aspectRatio: '1/1', position: 'relative', backgroundColor: '#F8FAFC' }}>
                       <Image
-                        src={p.images?.[0] || '/images/shoe-leather-formal.jpg'}
+                        src={normalizeImageUrl(p.images?.[0]) || '/images/shoe-leather-formal.jpg'}
                         alt={stripHtml(p.name)}
                         fill
-                        unoptimized
+                        sizes="(max-width: 768px) 50vw, 200px"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/images/shoe-leather-formal.jpg';
+                        }}
                         style={{ objectFit: 'cover' }}
                       />
                     </div>
@@ -445,11 +449,14 @@ export const SearchModal: React.FC = () => {
                       }}
                     >
                       <Image
-                        src={p.images?.[0] || '/images/shoe-leather-formal.jpg'}
+                        src={normalizeImageUrl(p.images?.[0]) || '/images/shoe-leather-formal.jpg'}
                         alt={stripHtml(p.name)}
                         width={52}
                         height={52}
-                        unoptimized
+                        sizes="52px"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/images/shoe-leather-formal.jpg';
+                        }}
                         style={{
                           width: '52px',
                           height: '52px',

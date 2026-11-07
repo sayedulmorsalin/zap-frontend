@@ -12,13 +12,9 @@ import {
   RotateCcw, 
   Star, 
   Check, 
-  MessageCircle, 
-  ShoppingBag, 
   ChevronRight,
   ChevronLeft,
-  ZoomIn,
-  ExternalLink,
-  Info
+  ZoomIn
 } from 'lucide-react';
 import { Product } from '../../types/product';
 import { useShop } from '../../context/ShopContext';
@@ -59,7 +55,6 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     addToCart, 
     toggleWishlist, 
     isWishlisted, 
-    setIsCheckoutOpen, 
     setIsCartOpen,
     showToast,
     toastMessage,
@@ -245,17 +240,18 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
       .then((res) => {
         if (!isMounted) return;
         if (res.success && res.data && res.data.length > 0) {
-          const mapped: ProductReview[] = res.data.map((r: any) => ({
-            id: r.id || `rev-${Math.random()}`,
-            author: r.user?.name || r.author || 'Verified Customer',
+          const rawReviews = res.data as Array<Record<string, unknown>>;
+          const mapped: ProductReview[] = rawReviews.map((r) => ({
+            id: String(r.id || `rev-${Math.random()}`),
+            author: String((r.user as Record<string, unknown>)?.name || r.author || 'Verified Customer'),
             location: r.isVerifiedPurchase ? 'Verified Purchase' : 'Shopper',
             rating: Number(r.rating) || 5,
             date: r.createdAt
-              ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              ? new Date(String(r.createdAt)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
               : 'Recently',
             verified: !!r.isVerifiedPurchase,
-            title: r.title || 'Shoe Feedback',
-            comment: r.body || r.comment || '',
+            title: String(r.title || 'Shoe Feedback'),
+            comment: String(r.body || r.comment || ''),
           }));
           setReviewsList(mapped);
         } else {
@@ -272,6 +268,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     return () => {
       isMounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
 
   // Fallback related products if not provided
@@ -540,7 +537,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                     alt={`${stripHtml(product.name)} thumbnail ${idx + 1}`}
                     width={80}
                     height={80}
-                    unoptimized
+                    sizes="80px"
                     style={{
                       width: '100%',
                       height: '100%',
@@ -585,7 +582,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                 width={700}
                 height={700}
                 priority
-                unoptimized
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 700px"
                 draggable={false}
                 style={{
                   width: '100%',
@@ -983,7 +980,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                         alt={c.name}
                         width={60}
                         height={60}
-                        unoptimized
+                        sizes="60px"
                         style={{
                           width: '100%',
                           height: '100%',
@@ -1625,6 +1622,20 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                 <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#111827', marginBottom: '14px' }}>
                   Write a Review
                 </h4>
+                {reviewSubmitted && (
+                  <div style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: '#ECFDF5',
+                    color: '#065F46',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    marginBottom: '14px',
+                    border: '1px solid #A7F3D0',
+                  }}>
+                    ✓ Thank you! Your verified review has been posted.
+                  </div>
+                )}
                 <form onSubmit={handleAddReview} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
@@ -1779,7 +1790,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   alt="Men Size Guide Chart"
                   width={800}
                   height={930}
-                  unoptimized
+                  sizes="(max-width: 768px) 100vw, 800px"
                   style={{ width: '100%', height: 'auto', display: 'block' }}
                 />
               </div>

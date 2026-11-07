@@ -648,7 +648,7 @@ export const ProductManager: React.FC = () => {
                           alt={p.name}
                           width={46}
                           height={46}
-                          unoptimized
+                          sizes="46px"
                           style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                         />
                       </div>
@@ -780,7 +780,7 @@ export const ProductManager: React.FC = () => {
                     alt={p.name}
                     width={60}
                     height={60}
-                    unoptimized
+                    sizes="60px"
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 </div>

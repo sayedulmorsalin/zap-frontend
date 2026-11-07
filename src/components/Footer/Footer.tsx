@@ -32,17 +32,22 @@ export const Footer: React.FC = () => {
       color: '#FFFFFF',
       borderTop: '1px solid #1E293B',
       marginTop: 'auto',
+      width: '100%',
+      maxWidth: '100%',
+      overflow: 'hidden',
     }}>
       {/* 4 Value Proposition Info Cards */}
       <ValueProps />
 
       {/* Main Footer Links Columns */}
-      <div style={{ padding: '60px 0 40px' }}>
-        <div className="container">
-          <div style={{
+      <div style={{ padding: '60px 0 40px', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+        <div className="container" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+          <div className="footer-columns-grid" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: '40px',
+            width: '100%',
+            maxWidth: '100%',
           }}>
             {/* Col 1: About ZAP Footwear */}
             <div>
@@ -246,6 +251,15 @@ export const Footer: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @media (max-width: 600px) {
+          .footer-columns-grid {
+            grid-template-columns: 1fr !important;
+            gap: 28px !important;
+          }
+        }
+      `}</style>
     </footer>
   );
 };

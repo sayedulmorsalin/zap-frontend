@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { X, Heart, Trash2, ShoppingBag } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { FormattedText, stripHtml } from '../Common/FormattedText';
+import { normalizeImageUrl } from '../../services/api';
 
 export const WishlistDrawer: React.FC = () => {
   const {
@@ -151,11 +152,14 @@ export const WishlistDrawer: React.FC = () => {
                   }}
                 >
                   <Image
-                    src={product.images[0]}
+                    src={normalizeImageUrl(product.images?.[0]) || '/images/shoe-leather-formal.jpg'}
                     alt={stripHtml(product.name)}
                     width={72}
                     height={72}
-                    unoptimized
+                    sizes="72px"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/images/shoe-leather-formal.jpg';
+                    }}
                     style={{ width: '90%', height: '90%', objectFit: 'contain' }}
                   />
                 </Link>

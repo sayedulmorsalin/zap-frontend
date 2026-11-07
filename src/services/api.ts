@@ -27,9 +27,17 @@ export function normalizeImageUrl(url?: string | null): string {
     return 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80';
   }
 
-  // Rewrite localhost/127.0.0.1 to API_BASE for external client devices (mobile, tablet, etc.)
+  // Rewrite localhost/127.0.0.1 (ports 3001, 5000) to API_BASE for external client devices (mobile, tablet, etc.)
   if (trimmed.includes('localhost:3001') || trimmed.includes('127.0.0.1:3001')) {
     return trimmed.replace(/^https?:\/\/(localhost|127\.0\.0\.1):3001/, API_BASE);
+  }
+  if (trimmed.includes('localhost:5000') || trimmed.includes('127.0.0.1:5000')) {
+    return trimmed.replace(/^https?:\/\/(localhost|127\.0\.0\.1):5000/, API_BASE);
+  }
+
+  // Ensure local public images start with a slash
+  if (trimmed.startsWith('images/')) {
+    return `/${trimmed}`;
   }
 
   // Prepend API_BASE for relative storage file paths
@@ -74,6 +82,43 @@ export interface ApiHealthResponse {
     api: string;
   };
   error?: string;
+}
+
+/**
+ * In-memory client-side cache with TTL to eliminate redundant network roundtrips
+ * and provide 0ms instant page loads and navigation.
+ */
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const memoryCache = new Map<string, CacheEntry<unknown>>();
+
+export function getFromCache<T>(key: string, ttlMs: number = 60_000): T | null {
+  const entry = memoryCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > ttlMs) {
+    memoryCache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+export function setToCache<T>(key: string, data: T): void {
+  memoryCache.set(key, { data, timestamp: Date.now() });
+}
+
+export function invalidateApiCache(prefix?: string): void {
+  if (!prefix) {
+    memoryCache.clear();
+    return;
+  }
+  for (const key of memoryCache.keys()) {
+    if (key.startsWith(prefix)) {
+      memoryCache.delete(key);
+    }
+  }
 }
 
 export interface ApiPagination {
@@ -292,17 +337,20 @@ export function transformBackendProduct(bp: RawBackendProduct): Product {
 }
 
 /**
- * Fetch all products from PostgreSQL backend
+ * Fetch all products from PostgreSQL backend with instant in-memory client cache
  */
-export async function fetchApiProducts(params?: {
-  page?: number;
-  limit?: number;
-  q?: string;
-  categoryId?: string;
-  brandId?: string;
-  gender?: string;
-  includeInactive?: boolean;
-}): Promise<{ products: Product[]; pagination: ApiPagination | null }> {
+export async function fetchApiProducts(
+  params?: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    categoryId?: string;
+    brandId?: string;
+    gender?: string;
+    includeInactive?: boolean;
+  },
+  forceFresh = false
+): Promise<{ products: Product[]; pagination: ApiPagination | null }> {
   try {
     const query = new URLSearchParams();
     query.set('limit', String(params?.limit || 100));
@@ -314,6 +362,16 @@ export async function fetchApiProducts(params?: {
     if (params?.includeInactive) query.set('includeInactive', 'true');
 
     const qs = query.toString();
+    const cacheKey = `products:${qs || 'default'}`;
+
+    // Return instant cached data for public catalog queries unless forceFresh is set
+    if (!forceFresh && !params?.includeInactive) {
+      const cached = getFromCache<{ products: Product[]; pagination: ApiPagination | null }>(cacheKey);
+      if (cached && cached.products && cached.products.length > 0) {
+        return cached;
+      }
+    }
+
     const endpoint = `/api/products${qs ? `?${qs}` : ''}`;
 
     let res: Response | null = null;
@@ -353,10 +411,16 @@ export async function fetchApiProducts(params?: {
       : rawList.filter((bp) => bp.isActive !== false);
     const products = activeList.map(transformBackendProduct);
 
-    return {
+    const result = {
       products,
       pagination: json.data?.pagination || null,
     };
+
+    if (!params?.includeInactive && products.length > 0) {
+      setToCache(cacheKey, result);
+    }
+
+    return result;
   } catch (err) {
     console.warn('[API fetchApiProducts Error]:', err);
     return { products: [], pagination: null };
@@ -364,10 +428,16 @@ export async function fetchApiProducts(params?: {
 }
 
 /**
- * Fetch a single product by ID or Slug from backend
+ * Fetch a single product by ID or Slug from backend with caching
  */
-export async function fetchApiProduct(idOrSlug: string): Promise<Product | null> {
+export async function fetchApiProduct(idOrSlug: string, forceFresh = false): Promise<Product | null> {
   try {
+    const cacheKey = `product:${idOrSlug.trim()}`;
+    if (!forceFresh) {
+      const cached = getFromCache<Product>(cacheKey);
+      if (cached) return cached;
+    }
+
     const endpoint = `/api/products/${encodeURIComponent(idOrSlug)}`;
     let res: Response | null = null;
     try {
@@ -396,7 +466,9 @@ export async function fetchApiProduct(idOrSlug: string): Promise<Product | null>
     if (!res || !res.ok) return null;
     const json = await res.json();
     if (!json.success || !json.data) return null;
-    return transformBackendProduct(json.data);
+    const transformed = transformBackendProduct(json.data);
+    setToCache(cacheKey, transformed);
+    return transformed;
   } catch (err) {
     console.warn('[API fetchApiProduct Error]:', err);
     return null;
@@ -404,10 +476,16 @@ export async function fetchApiProduct(idOrSlug: string): Promise<Product | null>
 }
 
 /**
- * Fetch all brands from backend
+ * Fetch all brands from backend with caching
  */
-export async function fetchApiBrands(): Promise<BrandInfo[]> {
+export async function fetchApiBrands(forceFresh = false): Promise<BrandInfo[]> {
   try {
+    const cacheKey = 'brands:all';
+    if (!forceFresh) {
+      const cached = getFromCache<BrandInfo[]>(cacheKey);
+      if (cached && cached.length > 0) return cached;
+    }
+
     const res = await fetch(`${API_BASE}/api/brands`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
@@ -419,7 +497,7 @@ export async function fetchApiBrands(): Promise<BrandInfo[]> {
     const json = await res.json();
     const rawList: RawBackendBrand[] = json.data || [];
 
-    return rawList.map((b) => ({
+    const brands = rawList.map((b) => ({
       id: String(b.id),
       name: b.name,
       slug: b.slug,
@@ -429,6 +507,11 @@ export async function fetchApiBrands(): Promise<BrandInfo[]> {
       badgeColor: '#1E293B',
       accentColor: '#D32F2F',
     }));
+
+    if (brands.length > 0) {
+      setToCache(cacheKey, brands);
+    }
+    return brands;
   } catch (err) {
     console.warn('[API fetchApiBrands Error]:', err);
     return [];
@@ -436,10 +519,16 @@ export async function fetchApiBrands(): Promise<BrandInfo[]> {
 }
 
 /**
- * Fetch all categories from backend
+ * Fetch all categories from backend with caching
  */
-export async function fetchApiCategories(): Promise<RawBackendCategory[]> {
+export async function fetchApiCategories(forceFresh = false): Promise<RawBackendCategory[]> {
   try {
+    const cacheKey = 'categories:all';
+    if (!forceFresh) {
+      const cached = getFromCache<RawBackendCategory[]>(cacheKey);
+      if (cached && cached.length > 0) return cached;
+    }
+
     const res = await fetch(`${API_BASE}/api/categories`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
@@ -449,7 +538,11 @@ export async function fetchApiCategories(): Promise<RawBackendCategory[]> {
     if (!res.ok) return [];
 
     const json = await res.json();
-    return (json.data as RawBackendCategory[]) || [];
+    const categories = (json.data as RawBackendCategory[]) || [];
+    if (categories.length > 0) {
+      setToCache(cacheKey, categories);
+    }
+    return categories;
   } catch (err) {
     console.warn('[API fetchApiCategories Error]:', err);
     return [];
@@ -620,7 +713,7 @@ async function resilientApiFetch(
     };
   }
 
-  let json: any = null;
+  let json: Record<string, unknown> | null = null;
   let rawText = '';
   try {
     rawText = await res.text();
@@ -634,10 +727,10 @@ async function resilientApiFetch(
   }
 
   const extractedMessage =
-    json?.message ||
-    json?.error ||
+    (typeof json?.message === 'string' ? json.message : null) ||
+    (typeof json?.error === 'string' ? json.error : null) ||
     (json?.errors && typeof json.errors === 'object'
-      ? Object.values(json.errors).flat().join(', ')
+      ? Object.values(json.errors as Record<string, unknown>).flat().join(', ')
       : null) ||
     (!rawText.startsWith('<') && rawText.length < 120 ? rawText.trim() : null) ||
     (res.ok ? 'Success' : `Server responded with status ${res.status}`);
@@ -764,6 +857,10 @@ export async function createApiProduct(product: Product): Promise<{ success: boo
       body: JSON.stringify(payload),
     });
 
+    if (res.ok) {
+      invalidateApiCache('products');
+    }
+
     return {
       success: res.ok,
       data: res.data,
@@ -859,6 +956,12 @@ export async function updateApiProduct(id: string, product: Partial<Product>): P
       body: JSON.stringify(payload),
     });
 
+    if (res.ok) {
+      invalidateApiCache('products');
+      invalidateApiCache(`product:${id}`);
+      if (product.slug) invalidateApiCache(`product:${product.slug}`);
+    }
+
     return {
       success: res.ok,
       data: res.data,
@@ -873,13 +976,13 @@ export async function updateApiProduct(id: string, product: Partial<Product>): P
 /**
  * Fetch approved customer reviews for a product from the backend
  */
-export async function fetchProductReviews(productId: string): Promise<{ success: boolean; data?: any[]; avgRating?: number; total?: number; message?: string }> {
+export async function fetchProductReviews(productId: string): Promise<{ success: boolean; data?: unknown[]; avgRating?: number; total?: number; message?: string }> {
   try {
     const res = await resilientApiFetch(`/api/reviews?productId=${encodeURIComponent(productId)}`, {
       method: 'GET',
     });
     if (res.ok && res.data) {
-      const payloadData = res.data as { items?: any[]; data?: any[]; avgRating?: number; total?: number };
+      const payloadData = res.data as { items?: unknown[]; data?: unknown[]; avgRating?: number; total?: number };
       const items = Array.isArray(res.data) 
         ? res.data 
         : (payloadData.items || payloadData.data || []);
@@ -952,6 +1055,11 @@ export async function deleteApiProduct(id: string): Promise<{ success: boolean; 
       headers,
     });
 
+    if (res.ok) {
+      invalidateApiCache('products');
+      invalidateApiCache(`product:${id}`);
+    }
+
     return {
       success: res.ok,
       message: res.message,
@@ -1001,7 +1109,7 @@ export async function uploadApiFiles(
 
     // Strategy 1: Try relative Next.js proxy route /api/storage/upload (same-origin, bypasses browser CORS)
     let res: Response | null = null;
-    let json: any = null;
+    let json: Record<string, unknown> | null = null;
 
     try {
       res = await fetch('/api/storage/upload', {
@@ -1037,7 +1145,7 @@ export async function uploadApiFiles(
     return {
       success: Boolean(res?.ok && json?.success),
       data: records,
-      message: json?.message || (res?.ok ? 'Upload successful' : `Upload failed (${res?.status || 'Unknown error'})`),
+      message: (typeof json?.message === 'string' ? json.message : undefined) || (res?.ok ? 'Upload successful' : `Upload failed (${res?.status || 'Unknown error'})`),
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Network error uploading file to storage';
@@ -1434,10 +1542,16 @@ export interface ApiBannersResponse {
 }
 
 /**
- * Fetch all banners (hero slides & promotional cards) from PostgreSQL backend
+ * Fetch all banners (hero slides & promotional cards) from PostgreSQL backend with instant caching
  */
-export async function fetchApiBanners(): Promise<ApiBannersResponse | null> {
+export async function fetchApiBanners(forceFresh = false): Promise<ApiBannersResponse | null> {
   try {
+    const cacheKey = 'banners:all';
+    if (!forceFresh) {
+      const cached = getFromCache<ApiBannersResponse>(cacheKey);
+      if (cached) return cached;
+    }
+
     const res = await fetch(`${API_BASE}/api/banners`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
@@ -1447,7 +1561,7 @@ export async function fetchApiBanners(): Promise<ApiBannersResponse | null> {
     const json = await res.json();
     if (json.success && json.data) {
       const bannerData = json.data as ApiBannersResponse;
-      return {
+      const result: ApiBannersResponse = {
         heroSlides: (bannerData.heroSlides || []).map((slide) => ({
           ...slide,
           image: normalizeImageUrl(slide.image),
@@ -1457,6 +1571,8 @@ export async function fetchApiBanners(): Promise<ApiBannersResponse | null> {
           image: normalizeImageUrl(banner.image),
         })),
       };
+      setToCache(cacheKey, result);
+      return result;
     }
     return null;
   } catch (err) {
@@ -1481,6 +1597,9 @@ export async function saveAllApiBanners(
       body: JSON.stringify({ heroSlides, promoBanners }),
     });
 
+    if (res.ok) {
+      invalidateApiCache('banners');
+    }
     return res.ok;
   } catch (err) {
     console.warn('[API saveAllApiBanners Error]:', err);
@@ -1501,6 +1620,9 @@ export async function createOrUpdateApiBanner(banner: Partial<HeroSlide & PromoB
       body: JSON.stringify(banner),
     });
 
+    if (res.ok) {
+      invalidateApiCache('banners');
+    }
     return res.ok;
   } catch (err) {
     console.warn('[API createOrUpdateApiBanner Error]:', err);
@@ -1520,6 +1642,9 @@ export async function deleteApiBanner(bannerId: string): Promise<boolean> {
       headers,
     });
 
+    if (res.ok) {
+      invalidateApiCache('banners');
+    }
     return res.ok;
   } catch (err) {
     console.warn('[API deleteApiBanner Error]:', err);

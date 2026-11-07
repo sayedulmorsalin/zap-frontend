@@ -52,13 +52,28 @@ html {
   background: var(--bg-primary);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
   overflow-x: hidden;
+  overflow-x: clip;
+  position: relative;
+}
+
+main {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  position: relative;
 }
 
 /* Utility Containers */
@@ -382,28 +397,45 @@ body {
   }
 }
 
-@media (max-width: 680px) {
-  /* Exactly 2 products in one row on mobile */
+@media (max-width: 768px) {
+  /* Exactly 2 products in one row on mobile with ZERO horizontal overflow */
   .product-catalog-grid,
   .related-products-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   /* Catalog section padding & filter toolbar */
   #product-catalog {
     padding: 24px 0 40px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
   }
 
   .catalog-filter-bar {
-    padding: 12px !important;
-    border-radius: 12px !important;
-    margin-bottom: 18px !important;
+    padding: 12px 10px !important;
+    border-radius: 14px !important;
+    margin-bottom: 16px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  /* Product Card Compact Styling & Small Text */
+  /* Product Card Luxury Mobile Styling */
   .product-card {
-    border-radius: 12px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    border-radius: 14px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    border: 1px solid #E2E8F0 !important;
     touch-action: manipulation !important;
     -webkit-tap-highlight-color: transparent !important;
   }
@@ -415,31 +447,37 @@ body {
 
   .product-card-body {
     padding: 10px 8px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
   }
 
   .product-card-brand {
-    font-size: 0.62rem !important;
-    letter-spacing: 0.04em !important;
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
   }
 
   .product-card-gender {
-    font-size: 0.62rem !important;
+    font-size: 0.66rem !important;
   }
 
   .product-card-title {
-    font-size: 0.78rem !important;
+    font-size: 0.84rem !important;
     line-height: 1.25 !important;
-    min-height: 2.3em !important;
+    min-height: 2.5em !important;
     margin-bottom: 4px !important;
+    font-weight: 700 !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
   }
 
   .product-card-rating {
-    margin-bottom: 6px !important;
+    margin-bottom: 4px !important;
     gap: 3px !important;
   }
 
   .product-card-rating span {
-    font-size: 0.65rem !important;
+    font-size: 0.7rem !important;
   }
 
   .product-card-rating svg {
@@ -448,62 +486,105 @@ body {
   }
 
   .product-card-sizes {
-    margin-bottom: 6px !important;
+    margin-bottom: 4px !important;
   }
 
   .product-card-sizes-label {
-    font-size: 0.62rem !important;
+    font-size: 0.64rem !important;
     margin-bottom: 2px !important;
   }
 
   .product-card-sizes-chips {
-    gap: 4px !important;
+    gap: 3px !important;
   }
 
   .product-card-size-btn {
-    width: 22px !important;
+    width: 24px !important;
     height: 20px !important;
-    font-size: 0.62rem !important;
+    font-size: 0.65rem !important;
     border-radius: 3px !important;
   }
 
   .product-card-colors {
-    margin-bottom: 6px !important;
-    gap: 4px !important;
+    margin-bottom: 4px !important;
+    gap: 3px !important;
   }
 
   .product-card-colors-label {
-    font-size: 0.62rem !important;
+    font-size: 0.64rem !important;
   }
 
   .product-card-color-dot {
-    width: 12px !important;
-    height: 12px !important;
+    width: 13px !important;
+    height: 13px !important;
   }
 
   .product-card-pricing {
     padding-top: 6px !important;
     margin-bottom: 8px !important;
+    flex-wrap: wrap !important;
+    gap: 2px !important;
+    min-width: 0 !important;
   }
 
   .product-card-price {
-    font-size: 0.92rem !important;
+    font-size: 1rem !important;
+    font-weight: 900 !important;
+    line-height: 1.1 !important;
   }
 
   .product-card-regular-price {
-    font-size: 0.7rem !important;
+    font-size: 0.72rem !important;
   }
 
   .product-card-save-badge {
-    font-size: 0.58rem !important;
+    font-size: 0.62rem !important;
     padding: 1px 4px !important;
+    border-radius: 3px !important;
+    white-space: nowrap !important;
+  }
+
+  .product-card-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    width: 100% !important;
+    min-width: 0 !important;
   }
 
   .product-card-btn {
-    padding: 7px 8px !important;
-    font-size: 0.72rem !important;
-    border-radius: 6px !important;
-    gap: 5px !important;
+    padding: 8px 6px !important;
+    font-size: 0.74rem !important;
+    border-radius: 7px !important;
+    font-weight: 800 !important;
+    gap: 3px !important;
+  }
+
+  .product-card-buy-btn {
+    flex: 1 !important;
+    min-width: 0 !important;
+    padding: 8px 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    text-align: center !important;
+  }
+
+  .product-card-bag-btn {
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 7px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .product-card-bag-btn span {
+    display: none !important;
   }
 
   .product-card-btn svg {
@@ -513,8 +594,9 @@ body {
 
   .product-card .badge-discount,
   .product-card .badge-tag {
-    font-size: 0.6rem !important;
-    padding: 2px 5px !important;
+    font-size: 0.65rem !important;
+    padding: 3px 6px !important;
+    border-radius: 6px !important;
     top: 8px !important;
     left: 8px !important;
   }
@@ -525,15 +607,20 @@ body {
   }
 
   .product-card-wishlist {
-    width: 28px !important;
-    height: 28px !important;
+    width: 32px !important;
+    height: 32px !important;
     top: 8px !important;
     right: 8px !important;
   }
 
   .product-card-wishlist svg {
-    width: 14px !important;
-    height: 14px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  /* Body bottom padding on mobile so fixed bottom navigation does not cover content */
+  body {
+    padding-bottom: 58px;
   }
 
   /* Related Products Card on Mobile */
@@ -715,42 +802,11 @@ body {
 
 /* ─── Zero Horizontal Scroll: Responsive Mobile Options Fitting ─── */
 
-/* 1. Story Categories: 4-Column Grid on Mobile so all 8 are visible without scrolling */
+/* 1. Story Categories: Mobile Horizontal App Carousel */
 .story-categories-track {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  overflow-x: visible;
-}
-
-@media (max-width: 768px) {
-  .story-categories-track {
-    display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 14px 6px !important;
-    overflow-x: visible !important;
-    width: 100% !important;
-    justify-items: center !important;
-  }
-
-  .story-categories-track button {
-    width: 100% !important;
-    max-width: 80px !important;
-    margin: 0 auto !important;
-  }
-
-  .story-categories-track .story-ring {
-    width: 58px !important;
-    height: 58px !important;
-  }
-
-  .story-categories-track .story-title {
-    font-size: 0.68rem !important;
-    white-space: normal !important;
-    line-height: 1.15 !important;
-  }
+  gap: 16px;
 }
 
 /* 2. Quick Category Filter Pills: Wrap naturally so no horizontal scroll */

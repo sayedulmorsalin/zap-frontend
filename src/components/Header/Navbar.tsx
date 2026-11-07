@@ -12,10 +12,14 @@ import {
   X, 
   ChevronDown, 
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Phone,
+  MapPin,
+  Truck
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { FormattedText, stripHtml } from '../Common/FormattedText';
+import { normalizeImageUrl } from '../../services/api';
 
 export const Navbar: React.FC = () => {
   const router = useRouter();
@@ -35,6 +39,8 @@ export const Navbar: React.FC = () => {
     products,
     setQuickViewProduct,
     setIsSearchOpen,
+    setIsTrackOrderOpen,
+    storeSettings,
   } = useShop();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -115,15 +121,34 @@ export const Navbar: React.FC = () => {
       boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
       borderBottom: '1px solid #E5E7EB',
     }}>
-      <div className="container" style={{
+      <div className="container navbar-container" style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         height: '74px',
-        gap: '20px',
+        gap: '12px',
       }}>
-        {/* Brand Logo (ZAP Atelier Luxury Logo) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Left Side: Mobile Hamburger + Brand Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Mobile Menu Hamburger */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Mobile Navigation Menu"
+            style={{
+              display: 'none',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '6px',
+              color: '#0F172A',
+              borderRadius: '8px',
+            }}
+            className="mobile-hamburger-btn"
+          >
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+
+          {/* Brand Logo (ZAP Atelier Luxury Logo) */}
           <Link
             href="/"
             onClick={() => {
@@ -149,19 +174,20 @@ export const Navbar: React.FC = () => {
               background: 'linear-gradient(135deg, #09090B 0%, #18181B 100%)',
               color: '#FFFFFF',
               fontWeight: 900,
-              fontSize: '1.65rem',
+              fontSize: '1.5rem',
               letterSpacing: '0.04em',
-              padding: '3px 14px',
+              padding: '3px 12px',
               borderRadius: '8px',
               boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '2px',
+              flexShrink: 0,
             }}>
               <span>ZAP</span>
-              <span style={{ color: '#E11D48', fontSize: '1.6rem', lineHeight: 1 }}>.</span>
+              <span style={{ color: '#E11D48', fontSize: '1.5rem', lineHeight: 1 }}>.</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <div className="logo-subtext-desktop" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <span style={{
                 fontSize: '0.68rem',
                 fontWeight: 800,
@@ -430,11 +456,14 @@ export const Navbar: React.FC = () => {
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
                   <Image
-                    src={product.images[0]}
+                    src={normalizeImageUrl(product.images?.[0]) || '/images/shoe-leather-formal.jpg'}
                     alt={stripHtml(product.name)}
                     width={42}
                     height={42}
-                    unoptimized
+                    sizes="42px"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/images/shoe-leather-formal.jpg';
+                    }}
                     style={{
                       width: '42px',
                       height: '42px',
@@ -569,6 +598,7 @@ export const Navbar: React.FC = () => {
           <button
             onClick={() => setIsCartOpen(true)}
             aria-label="Cart"
+            className="cart-btn-responsive"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -618,23 +648,6 @@ export const Navbar: React.FC = () => {
                 Tk {cartSubtotal.toLocaleString()}
               </span>
             </div>
-          </button>
-
-          {/* Mobile Menu Hamburger */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Mobile Navigation"
-            style={{
-              display: 'none',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '6px',
-              color: '#0F172A',
-            }}
-            className="mobile-hamburger-btn"
-          >
-            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </div>
@@ -730,11 +743,14 @@ export const Navbar: React.FC = () => {
                     }}
                   >
                     <Image
-                      src={product.images[0]}
+                      src={normalizeImageUrl(product.images?.[0]) || '/images/shoe-leather-formal.jpg'}
                       alt={stripHtml(product.name)}
                       width={38}
                       height={38}
-                      unoptimized
+                      sizes="38px"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/images/shoe-leather-formal.jpg';
+                      }}
                       style={{
                         width: '38px',
                         height: '38px',
@@ -827,6 +843,67 @@ export const Navbar: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* Mobile Customer Care Quick Links */}
+          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setIsTrackOrderOpen(true);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                color: '#0F172A',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                textAlign: 'left',
+                width: '100%',
+              }}
+            >
+              <Search size={16} color="#D32F2F" />
+              <span>Track Your Order</span>
+            </button>
+
+            <a
+              href={`tel:${(storeSettings?.supportPhone || '+8809666777222').replace(/[^0-9+]/g, '')}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                color: '#0F172A',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                textDecoration: 'none',
+              }}
+            >
+              <Phone size={16} color="#D32F2F" />
+              <span>Customer Hotline: {storeSettings?.supportPhone || '+880 9666 777 222'}</span>
+            </a>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 4px',
+              color: '#64748B',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+            }}>
+              <MapPin size={14} color="#D32F2F" />
+              <span>260+ Stores Across Bangladesh</span>
+            </div>
+          </div>
         </div>
       )}
 
@@ -846,8 +923,22 @@ export const Navbar: React.FC = () => {
           }
         }
         @media (max-width: 991px) {
+          .navbar-container {
+            height: 60px !important;
+            gap: 8px !important;
+          }
+          .logo-subtext-desktop {
+            display: none !important;
+          }
+          .cart-btn-responsive {
+            padding: 8px !important;
+            border: none !important;
+            background: transparent !important;
+          }
           .mobile-hamburger-btn {
-            display: block !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
           }
           .mobile-search-btn {
             display: flex !important;

@@ -414,11 +414,31 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Initial Asynchronous Hydration from Backend
+  // Initial Asynchronous Hydration from Backend (Optimized for instant FCP & TTI)
   useEffect(() => {
     let active = true;
+
+    // 1. Immediately kick off storefront catalog fetch in parallel (zero waterfall)
+    Promise.all([
+      fetchApiProducts().catch(() => ({ products: [], pagination: null })),
+      fetchApiBrands().catch(() => []),
+      fetchApiBanners().catch(() => null),
+    ]).then(([apiProdData, apiBrandData, apiBanners]) => {
+      if (!active) return;
+      if (apiProdData.products.length > 0) {
+        setProducts(apiProdData.products);
+      }
+      if (apiBrandData.length > 0) {
+        setBrands(apiBrandData);
+      }
+      if (apiBanners && apiBanners.heroSlides?.length > 0) {
+        setHeroSlides(apiBanners.heroSlides);
+      }
+    });
+
+    // 2. Health check runs concurrently in the background without blocking storefront UI
     checkApiHealth()
-      .then(async (health) => {
+      .then((health) => {
         if (!active) return;
         if (health && health.services?.api === 'running') {
           const isDbConnected = health.services?.database === 'connected';
@@ -429,27 +449,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
             port: 3001,
             error: health.error,
           });
-
-          if (isDbConnected) {
-            const [apiProdData, apiBrandData, apiOrdersData, apiUsersData, apiBanners] = await Promise.all([
-              fetchApiProducts(),
-              fetchApiBrands(),
-              fetchApiOrders(),
-              fetchApiCustomers(),
-              fetchApiBanners(),
-            ]);
-
-            if (active) {
-              setProducts(apiProdData.products);
-              setBrands(apiBrandData);
-              if (apiOrdersData.length > 0) setOrders(apiOrdersData);
-              if (apiUsersData.length > 0) setCustomers(apiUsersData);
-              if (apiBanners) {
-                if (apiBanners.heroSlides?.length > 0) setHeroSlides(apiBanners.heroSlides);
-              }
-            }
-          }
-
         } else {
           setApiStatus('offline');
           setApiInfo(null);

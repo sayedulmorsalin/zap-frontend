@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { FormattedText, stripHtml } from '../Common/FormattedText';
+import { normalizeImageUrl } from '../../services/api';
 
 export const CartDrawer: React.FC = () => {
   const router = useRouter();
@@ -201,7 +202,8 @@ export const CartDrawer: React.FC = () => {
               const itemColorway = item.product.colorVariants?.find(
                 (cv) => cv.color.toLowerCase() === item.selectedColor.toLowerCase()
               );
-              const itemImage = itemColorway?.images?.[0] || item.product.images[0];
+              const rawItemImg = itemColorway?.images?.[0] || item.product.images?.[0];
+              const itemImage = normalizeImageUrl(rawItemImg) || '/images/shoe-power-runner.jpg';
 
               let maxStock = 99;
               if (itemColorway && itemColorway.sizes.length > 0) {
@@ -248,7 +250,10 @@ export const CartDrawer: React.FC = () => {
                     alt={`${stripHtml(item.product.name)} - ${item.selectedColor}`}
                     width={72}
                     height={72}
-                    unoptimized
+                    sizes="72px"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/images/shoe-power-runner.jpg';
+                    }}
                     style={{ width: '90%', height: '90%', objectFit: 'contain' }}
                   />
                 </Link>

@@ -4,6 +4,7 @@ import './globals.css';
 import { ShopProvider } from '../context/ShopContext';
 import { WhatsAppFloatingButton } from '../components/Common/WhatsAppFloatingButton';
 import { SearchModal } from '../components/Modals/SearchModal';
+import { CustomerBottomNav } from '../components/Navigation/CustomerBottomNav';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -39,11 +40,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.className} suppressHydrationWarning>
+    <html lang="en" className={inter.className} data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://zap-api-s07dc5-55b9e4-185-209-229-28.sslip.io" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://zap-api-s07dc5-55b9e4-185-209-229-28.sslip.io" />
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+      </head>
       <body suppressHydrationWarning>
         <ShopProvider>
           {children}
           <SearchModal />
+          <CustomerBottomNav />
           <WhatsAppFloatingButton />
         </ShopProvider>
       </body>

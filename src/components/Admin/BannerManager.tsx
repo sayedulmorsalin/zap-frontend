@@ -394,7 +394,7 @@ export const BannerManager: React.FC = () => {
                         src={slide.image || '/images/hero-banner.jpg'}
                         alt={slide.headline}
                         fill
-                        unoptimized
+                        sizes="110px"
                         style={{ objectFit: 'cover' }}
                       />
                     </div>
@@ -756,7 +756,7 @@ export const BannerManager: React.FC = () => {
                         src={heroForm.image || '/images/hero-banner.jpg'}
                         alt="Preview"
                         fill
-                        unoptimized
+                        sizes="360px"
                         style={{ objectFit: 'cover' }}
                       />
                       <div style={{
@@ -1033,8 +1033,8 @@ export const BannerManager: React.FC = () => {
                           value={heroForm.ctaTargetValue}
                           onChange={(e) => setHeroForm({ ...heroForm, ctaTargetValue: e.target.value })}
                         >
-                          <option value="MEN">Men's Footwear</option>
-                          <option value="WOMEN">Women's Footwear</option>
+                          <option value="MEN">Men&apos;s Footwear</option>
+                          <option value="WOMEN">Women&apos;s Footwear</option>
                           <option value="KIDS">Kids Collection</option>
                           <option value="ALL">All Genders</option>
                         </select>
@@ -1112,8 +1112,8 @@ export const BannerManager: React.FC = () => {
                           value={heroForm.secondaryCtaTargetValue}
                           onChange={(e) => setHeroForm({ ...heroForm, secondaryCtaTargetValue: e.target.value })}
                         >
-                          <option value="WOMEN">Women's Footwear</option>
-                          <option value="MEN">Men's Footwear</option>
+                          <option value="WOMEN">Women&apos;s Footwear</option>
+                          <option value="MEN">Men&apos;s Footwear</option>
                           <option value="KIDS">Kids Collection</option>
                         </select>
                       )}
